@@ -1,0 +1,48 @@
+# Environments
+.env
+.env.*
+.venv/
+venv/
+env/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Python Caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Node Caches
+node_modules/
+dist/
+build/
+coverage/
+
+# OS/System Files
+.DS_Store
+Thumbs.db
+*.log
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+
+# Certificates and Keys
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+
+# Application Specific Output
+uploads/
+reports/generated/
+scan_outputs/
+tmp/
+temp/
