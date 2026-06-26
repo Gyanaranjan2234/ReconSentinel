@@ -1,17 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-import database
-import models
 from scanner import router as scanner_router
 from intel import router as intel_router
 from reports import router as reports_router
 
 # Load environment variables
 load_dotenv()
-
-# Initialize database schemas
-models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(
     title="ReconSentinel API",

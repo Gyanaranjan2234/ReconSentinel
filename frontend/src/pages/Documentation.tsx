@@ -93,10 +93,10 @@ export default function Documentation() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="text-xs font-bold text-[#94a3b8] hover:text-white uppercase tracking-widest hidden sm:block transition-colors">
+          <button onClick={() => navigate('/')} className="text-base font-semibold leading-tight tracking-normal text-[#94a3b8] hover:text-white hidden sm:flex items-center justify-center transition-colors">
             Back to Home
           </button>
-          <button onClick={() => navigate('/dashboard')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+          <button onClick={() => navigate('/recon-console')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white h-[48px] px-6 rounded text-base font-semibold leading-tight tracking-normal transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center justify-center gap-2">
             Launch Console
           </button>
         </div>
@@ -135,11 +135,11 @@ export default function Documentation() {
               Everything you need to understand, configure, and use ReconSentinel.
             </p>
             <div className="flex flex-wrap gap-4 pt-4">
-              <button onClick={() => navigate('/dashboard')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-6 py-3 rounded text-sm font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] flex items-center gap-2">
-                Launch Console <Terminal size={16} />
+              <button onClick={() => navigate('/recon-console')} className="bg-[#3b82f6] hover:bg-[#2563eb] text-white h-[52px] px-8 rounded text-base font-semibold leading-tight tracking-normal transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2">
+                Launch Console <Terminal size={20} />
               </button>
-              <a href="https://github.com/gyanaranjan2234/NetReconX" target="_blank" rel="noopener noreferrer" className="bg-[#161b27] hover:bg-[#1e293b] border border-[#334155] text-white px-6 py-3 rounded text-sm font-bold uppercase tracking-widest transition-all flex items-center gap-2">
-                GitHub Repository <Github size={16} />
+              <a href="https://github.com/gyanaranjan2234/ReconSentinel" target="_blank" rel="noopener noreferrer" className="bg-[#161b27] hover:bg-[#1e293b] border border-[#334155] text-white h-[52px] px-8 rounded text-base font-semibold leading-tight tracking-normal transition-all flex items-center justify-center gap-2">
+                GitHub Repository <Github size={20} />
               </a>
             </div>
           </section>
@@ -546,7 +546,7 @@ export default function Documentation() {
               <Mail className="text-[#ec4899]" /> Contact
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <a href="https://github.com/gyanaranjan2234/NetReconX" target="_blank" rel="noopener noreferrer" className="bg-[#161b27] border border-[#21293a] hover:border-[#22c55e]/50 p-4 rounded text-center flex flex-col items-center group transition-colors">
+              <a href="https://github.com/gyanaranjan2234/ReconSentinel" target="_blank" rel="noopener noreferrer" className="bg-[#161b27] border border-[#21293a] hover:border-[#22c55e]/50 p-4 rounded text-center flex flex-col items-center group transition-colors">
                 <Github size={20} className="text-[#22c55e] mb-2 group-hover:scale-110 transition-transform" />
                 <span className="text-xs font-bold text-white uppercase tracking-wider">GitHub</span>
               </a>
@@ -558,7 +558,7 @@ export default function Documentation() {
                 <Mail size={20} className="text-[#3b82f6] mb-2 group-hover:scale-110 transition-transform" />
                 <span className="text-xs font-bold text-white uppercase tracking-wider">Email Support</span>
               </a>
-              <a href="https://github.com/gyanaranjan2234/NetReconX/issues" target="_blank" rel="noopener noreferrer" className="bg-[#161b27] border border-[#21293a] hover:border-[#ef4444]/50 p-4 rounded text-center flex flex-col items-center group transition-colors">
+              <a href="https://github.com/gyanaranjan2234/ReconSentinel/issues" target="_blank" rel="noopener noreferrer" className="bg-[#161b27] border border-[#21293a] hover:border-[#ef4444]/50 p-4 rounded text-center flex flex-col items-center group transition-colors">
                 <AlertTriangle size={20} className="text-[#ef4444] mb-2 group-hover:scale-110 transition-transform" />
                 <span className="text-xs font-bold text-white uppercase tracking-wider">Report Issue</span>
               </a>
@@ -578,7 +578,7 @@ export default function Documentation() {
             </span>
           </div>
           <div className="flex gap-4 text-xs font-bold text-[#94a3b8] uppercase tracking-widest">
-            <a href="https://github.com/gyanaranjan2234/NetReconX" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
+            <a href="https://github.com/gyanaranjan2234/ReconSentinel" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
             <a href="https://www.linkedin.com/in/gyana-ranjan-behera-7047222a1/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LinkedIn</a>
             <a href="/documentation" className="hover:text-white transition-colors">Docs</a>
             <a href="/privacy-policy" className="hover:text-white transition-colors">Privacy</a>

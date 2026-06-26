@@ -70,9 +70,9 @@ export default function Contact() {
           </div>
           <button 
             onClick={() => navigate('/')}
-            className="text-[#94a3b8] hover:text-white transition-colors flex items-center gap-2 text-sm font-semibold tracking-wider uppercase"
+            className="text-[#94a3b8] hover:text-white h-[48px] px-6 rounded text-base font-semibold leading-tight tracking-normal transition-colors flex items-center justify-center gap-2"
           >
-            <ArrowLeft size={16} /> Back to Home
+            <ArrowLeft size={20} /> Back to Home
           </button>
         </div>
       </nav>
@@ -164,9 +164,9 @@ export default function Contact() {
 
               <button 
                 type="submit"
-                className="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white px-6 py-4 rounded font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2"
+                className="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white h-[52px] px-8 rounded text-base font-semibold leading-tight tracking-normal transition-all shadow-[0_0_15px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2"
               >
-                Send Message <Send size={16} />
+                Send Message <Send size={20} />
               </button>
             </form>
           </div>

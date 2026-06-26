@@ -18,9 +18,6 @@ import {
   FileText,
   Network,
   Target,
-  Cpu,
-  BarChart3,
-  Globe,
   Github,
   Mail,
   Linkedin,
@@ -83,7 +80,7 @@ export default function LandingPage() {
     { q: "Is ReconSentinel suitable for enterprise environments?", a: "Absolutely. With multi-threaded scanning, role-based reporting, and secure sandbox architectures, it is designed to scale across large enterprise infrastructures." }
   ];
 
-  const Counter = ({ target, label }: { target: number, label: string }) => {
+  const Counter = ({ target, label, suffix = '', subtitle }: { target: number, label: string, suffix?: string, subtitle?: string }) => {
     const [count, setCount] = useState(0);
     
     useEffect(() => {
@@ -91,25 +88,31 @@ export default function LandingPage() {
       const end = target;
       if (start === end) return;
       
-      let totalMilSecDur = 2000;
-      let incrementTime = (totalMilSecDur / end) * 5;
+      const totalMilSecDur = 2000;
+      const steps = 60;
+      const incrementTime = totalMilSecDur / steps;
+      const increment = Math.max(1, Math.ceil(end / steps));
       
-      let timer = setInterval(() => {
-        start += Math.ceil(end / 100);
-        if (start > end) start = end;
-        setCount(start);
-        if (start === end) clearInterval(timer);
+      const timer = setInterval(() => {
+        start += increment;
+        if (start >= end) {
+          setCount(end);
+          clearInterval(timer);
+        } else {
+          setCount(start);
+        }
       }, incrementTime);
 
       return () => clearInterval(timer);
     }, [target]);
 
     return (
-      <div className="flex flex-col items-center">
-        <span className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#3b82f6] to-[#22c55e] mb-2 font-mono">
-          {count.toLocaleString()}+
+      <div className="flex flex-col items-center justify-start h-full text-center">
+        <span className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#3b82f6] to-[#22c55e] mb-2 font-mono leading-tight">
+          {count.toLocaleString()}{suffix}
         </span>
-        <span className="text-xs md:text-sm text-[#94a3b8] uppercase tracking-widest font-semibold">{label}</span>
+        <span className="text-sm md:text-base text-[#94a3b8] uppercase tracking-widest font-bold leading-snug">{label}</span>
+        {subtitle && <span className="text-xs text-[#475569] font-mono mt-1.5 tracking-wider">{subtitle}</span>}
       </div>
     );
   };
@@ -143,10 +146,10 @@ export default function LandingPage() {
             <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
           </div>
           <button 
-            onClick={() => navigate('/dashboard')}
-            className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-5 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center gap-2"
+            onClick={() => navigate('/recon-console')}
+            className="bg-[#3b82f6] hover:bg-[#2563eb] text-white h-[48px] px-6 rounded text-base font-semibold leading-tight tracking-normal transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center justify-center gap-2"
           >
-            Launch Console <ArrowRight size={14} />
+            Launch Console <ArrowRight size={20} />
           </button>
         </div>
       </nav>
@@ -192,16 +195,16 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
             <button 
-              onClick={() => navigate('/dashboard')}
-              className="w-full sm:w-auto bg-gradient-to-r from-[#3b82f6] to-[#2563eb] hover:from-[#2563eb] hover:to-[#1d4ed8] text-white px-8 py-3.5 rounded text-sm font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2"
+              onClick={() => navigate('/recon-console')}
+              className="w-full sm:w-auto bg-gradient-to-r from-[#3b82f6] to-[#2563eb] hover:from-[#2563eb] hover:to-[#1d4ed8] text-white h-[52px] px-8 rounded text-base font-semibold leading-tight tracking-normal transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2"
             >
-              Launch Console <Terminal size={16} />
+              Launch Console <Terminal size={20} />
             </button>
             <a 
               href="#features"
-              className="w-full sm:w-auto bg-[#161b27] hover:bg-[#1e293b] border border-[#21293a] text-white px-8 py-3.5 rounded text-sm font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto bg-[#161b27] hover:bg-[#1e293b] border border-[#21293a] text-white h-[52px] px-8 rounded text-base font-semibold leading-tight tracking-normal transition-all flex items-center justify-center gap-2"
             >
-              View Features <ChevronRight size={16} />
+              View Features <ChevronRight size={20} />
             </a>
           </div>
         </motion.div>
@@ -266,11 +269,11 @@ export default function LandingPage() {
       {/* Interactive Stats */}
       <section className="relative z-10 py-20 bg-gradient-to-b from-[#05080f] to-[#0a0f1a] border-t border-[#21293a]">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <Counter target={65535} label="Ports Scannable" />
-            <Counter target={215000} label="CVEs Tracked" />
-            <Counter target={14} label="Intel Sources" />
-            <Counter target={24} label="24/7 AI Assistance" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-start">
+            <Counter target={65535} label="TCP Ports Supported" />
+            <Counter target={215000} label="CVEs Indexed" suffix="+" />
+            <Counter target={2} label="Threat Intelligence Sources" />
+            <Counter target={3} label="Supported Lookup Types" subtitle="IP • Domain • CVE" />
           </div>
         </div>
       </section>
@@ -326,217 +329,370 @@ export default function LandingPage() {
       </section>
 
       {/* Deep Dive Features */}
-      <section id="deep-dive" className="relative z-10 py-24 bg-[#0a0f1a] border-y border-[#21293a] overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-32">
+      <section id="deep-dive" className="relative z-10 py-32 bg-[#05080f] border-y border-[#21293a] overflow-hidden">
+        {/* Background elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#3b82f6]/5 rounded-full blur-3xl mix-blend-screen" />
+          <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-[#22c55e]/5 rounded-full blur-3xl mix-blend-screen" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-40 relative z-10">
           
-          {/* Feature 1 */}
+          {/* Feature 1: Intelligent Network Discovery */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-2 lg:order-1">
               <div className="w-12 h-12 rounded bg-[#3b82f6]/10 border border-[#3b82f6]/30 flex items-center justify-center text-[#3b82f6] mb-6">
                 <Network size={24} />
               </div>
-              <h3 className="text-3xl font-black text-white mb-4">Intelligent Network Reconnaissance</h3>
-              <p className="text-[#94a3b8] mb-8 leading-relaxed">
+              <h3 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">Intelligent Network <br/><span className="text-[#3b82f6]">Discovery</span></h3>
+              <p className="text-[#94a3b8] mb-8 leading-relaxed text-lg">
                 Experience unparalleled visibility into your infrastructure. Our multi-threaded scanning engine rapidly identifies live hosts and open entry points, while stealthy fingerprinting techniques extract precise service metadata without raising alarms.
               </p>
-              <ul className="space-y-3">
-                {["Host Discovery via ICMP/ARP", "TCP SYN Port Scanning", "Multi-threaded Execution", "Service & Banner Grabbing", "Advanced OS Fingerprinting", "Fast Network Enumeration"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm text-[#cbd5e1] font-medium">
-                    <CheckCircle2 className="text-[#3b82f6]" size={16} /> {item}
+              <ul className="space-y-4">
+                {["Host Discovery via ICMP/ARP", "TCP SYN Port Scanning", "Multi-threaded Execution", "Service & Banner Grabbing"].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[#cbd5e1] font-bold">
+                    <div className="bg-[#3b82f6]/20 p-1 rounded-full"><CheckCircle2 className="text-[#3b82f6]" size={16} /></div> {item}
                   </li>
                 ))}
               </ul>
             </motion.div>
-            <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-1 lg:order-2 relative h-[400px] bg-[#161b27] border border-[#21293a] rounded-2xl p-6 flex items-center justify-center overflow-hidden">
-              {/* SVG Animation for Topology */}
-              <svg className="w-full h-full" viewBox="0 0 400 400">
-                <circle cx="200" cy="200" r="80" fill="none" stroke="#21293a" strokeWidth="1" strokeDasharray="4 4" />
-                <circle cx="200" cy="200" r="140" fill="none" stroke="#21293a" strokeWidth="1" strokeDasharray="4 4" />
-                <motion.line x1="200" y1="200" x2="280" y2="120" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, repeat: Infinity }} />
-                <motion.line x1="200" y1="200" x2="120" y2="120" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 0.5, repeat: Infinity }} />
-                <motion.line x1="200" y1="200" x2="200" y2="340" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 1, repeat: Infinity }} />
+            
+            <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-1 lg:order-2 group perspective-1000">
+              <div className="relative h-[450px] bg-[#0a0f1a]/80 backdrop-blur-xl border border-[#21293a] rounded-2xl p-6 flex items-center justify-center overflow-hidden transition-all duration-700 group-hover:border-[#3b82f6]/50 group-hover:shadow-[0_0_40px_rgba(59,130,246,0.15)] group-hover:-translate-y-2">
+                {/* Grid Background */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#3b82f615_0%,_transparent_70%)]" />
                 
-                <motion.circle cx="200" cy="200" r="30" fill="#161b27" stroke="#3b82f6" strokeWidth="4" />
-                <motion.circle cx="200" cy="200" r="10" fill="#3b82f6" animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }} transition={{ duration: 2, repeat: Infinity }} />
-                
-                <circle cx="280" cy="120" r="20" fill="#161b27" stroke="#22c55e" strokeWidth="3" />
-                <circle cx="120" cy="120" r="20" fill="#161b27" stroke="#22c55e" strokeWidth="3" />
-                <circle cx="200" cy="340" r="20" fill="#161b27" stroke="#ef4444" strokeWidth="3" />
-                <motion.circle cx="200" cy="340" r="25" fill="none" stroke="#ef4444" strokeWidth="1" animate={{ scale: [1, 1.5, 2], opacity: [0.8, 0.3, 0] }} transition={{ duration: 1.5, repeat: Infinity }} />
-              </svg>
+                {/* Node Topology Animation */}
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <svg className="absolute w-full h-full" viewBox="0 0 400 400">
+                    {/* Radar Pulse */}
+                    <motion.circle cx="200" cy="200" r="0" fill="none" stroke="#3b82f6" strokeWidth="1" strokeOpacity="0.5"
+                      initial={{ r: 0, cx: 200, cy: 200 }} animate={{ r: [0, 200], opacity: [0.5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} />
+                    <motion.circle cx="200" cy="200" r="0" fill="none" stroke="#3b82f6" strokeWidth="1" strokeOpacity="0.5"
+                      initial={{ r: 0, cx: 200, cy: 200 }} animate={{ r: [0, 200], opacity: [0.5, 0] }} transition={{ duration: 3, delay: 1.5, repeat: Infinity, ease: "linear" }} />
+                      
+                    {/* Connecting Lines */}
+                    {[
+                      {x2: 120, y2: 100}, {x2: 280, y2: 120}, {x2: 100, y2: 260}, {x2: 280, y2: 280}, {x2: 200, y2: 80}
+                    ].map((pos, i) => (
+                      <motion.line key={i} x1="200" y1="200" x2={pos?.x2 ?? 200} y2={pos?.y2 ?? 200} stroke="#3b82f6" strokeWidth="1.5" strokeOpacity="0.3"
+                        initial={{ pathLength: 0, x1: 200, y1: 200, x2: pos?.x2 ?? 200, y2: pos?.y2 ?? 200 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: i * 0.2, repeat: Infinity, repeatType: "reverse", repeatDelay: 2 }} />
+                    ))}
+                    
+                    {/* Particles flowing */}
+                    {[
+                      {x1: 200, y1: 200, x2: 120, y2: 100}, {x1: 200, y1: 200, x2: 280, y2: 120}, {x1: 200, y1: 200, x2: 100, y2: 260}
+                    ].map((p, i) => (
+                      <motion.circle key={`p-${i}`} r="3" fill="#22c55e"
+                        initial={{ cx: p?.x1 ?? 200, cy: p?.y1 ?? 200, r: 3 }}
+                        animate={{ cx: [p?.x1 ?? 200, p?.x2 ?? 200], cy: [p?.y1 ?? 200, p?.y2 ?? 200], opacity: [0, 1, 0] }} transition={{ duration: 2, delay: i * 0.5, repeat: Infinity }} />
+                    ))}
+                    
+                    {/* Center Node */}
+                    <circle cx="200" cy="200" r="16" fill="#161b27" stroke="#3b82f6" strokeWidth="3" />
+                    <circle cx="200" cy="200" r="6" fill="#3b82f6" />
+                    
+                    {/* Outer Nodes */}
+                    <circle cx="120" cy="100" r="12" fill="#161b27" stroke="#22c55e" strokeWidth="2" />
+                    <circle cx="280" cy="120" r="14" fill="#161b27" stroke="#22c55e" strokeWidth="2" />
+                    <circle cx="100" cy="260" r="10" fill="#161b27" stroke="#22c55e" strokeWidth="2" />
+                    <circle cx="280" cy="280" r="12" fill="#161b27" stroke="#22c55e" strokeWidth="2" />
+                    <circle cx="200" cy="80" r="10" fill="#161b27" stroke="#ef4444" strokeWidth="2" />
+                  </svg>
+                  
+                  {/* Floating Tooltips */}
+                  <motion.div animate={{ y: [-5, 5, -5] }} transition={{ duration: 4, repeat: Infinity }} className="absolute top-10 right-10 bg-[#161b27] border border-[#334155] px-3 py-1.5 rounded-md text-xs font-mono text-[#22c55e] flex items-center gap-2 shadow-lg">
+                    <div className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"/> 192.168.1.45
+                  </motion.div>
+                  <motion.div animate={{ y: [5, -5, 5] }} transition={{ duration: 3.5, repeat: Infinity }} className="absolute bottom-16 left-8 bg-[#161b27] border border-[#ef4444]/50 px-3 py-1.5 rounded-md text-xs font-mono text-[#ef4444] flex items-center gap-2 shadow-lg">
+                    <div className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse"/> Firewall Blocked
+                  </motion.div>
+                </div>
+              </div>
             </motion.div>
           </div>
 
-          {/* Feature 2 */}
+          {/* Feature 2: Advanced Port & Service Enumeration */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="relative h-[400px] bg-[#161b27] border border-[#21293a] rounded-2xl p-6 flex items-center justify-center overflow-hidden">
-              {/* SVG Animation for Vulnerability */}
-              <svg className="w-full h-full" viewBox="0 0 400 400">
-                <rect x="50" y="150" width="100" height="100" rx="10" fill="#161b27" stroke="#3b82f6" strokeWidth="2" />
-                <text x="100" y="205" fill="#3b82f6" fontSize="14" textAnchor="middle" fontWeight="bold">Service</text>
+            <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="group perspective-1000">
+              <div className="relative h-[450px] bg-[#0a0f1a]/80 backdrop-blur-xl border border-[#21293a] rounded-2xl p-6 flex flex-col overflow-hidden transition-all duration-700 group-hover:border-[#8b5cf6]/50 group-hover:shadow-[0_0_40px_rgba(139,92,246,0.15)] group-hover:-translate-y-2">
+                {/* Terminal Header */}
+                <div className="flex items-center gap-2 mb-4 border-b border-[#21293a] pb-4">
+                  <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
+                  <div className="w-3 h-3 rounded-full bg-[#f59e0b]" />
+                  <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
+                  <span className="ml-2 text-xs font-mono text-[#64748b]">scanner@reconsentinel:~</span>
+                </div>
                 
-                <motion.path d="M 150 200 C 200 200, 200 100, 250 100" fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 4" animate={{ strokeDashoffset: [20, 0] }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
-                <motion.path d="M 150 200 C 200 200, 200 200, 250 200" fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 4" animate={{ strokeDashoffset: [20, 0] }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
-                <motion.path d="M 150 200 C 200 200, 200 300, 250 300" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 4" animate={{ strokeDashoffset: [20, 0] }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
-                
-                <rect x="250" y="70" width="100" height="60" rx="5" fill="#ef4444" fillOpacity="0.1" stroke="#ef4444" strokeWidth="1" />
-                <text x="300" y="105" fill="#ef4444" fontSize="12" textAnchor="middle" fontWeight="bold">CVE-2023-XXXX</text>
-                
-                <rect x="250" y="170" width="100" height="60" rx="5" fill="#ef4444" fillOpacity="0.1" stroke="#ef4444" strokeWidth="1" />
-                <text x="300" y="205" fill="#ef4444" fontSize="12" textAnchor="middle" fontWeight="bold">CVE-2022-YYYY</text>
-                
-                <rect x="250" y="270" width="100" height="60" rx="5" fill="#f59e0b" fillOpacity="0.1" stroke="#f59e0b" strokeWidth="1" />
-                <text x="300" y="305" fill="#f59e0b" fontSize="12" textAnchor="middle" fontWeight="bold">CVE-2021-ZZZZ</text>
-              </svg>
+                {/* Terminal Content */}
+                <div className="flex-1 font-mono text-sm space-y-4 relative z-10">
+                  <div className="text-[#3b82f6]">$ nmap -sS -sV 10.0.0.50</div>
+                  <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+                    <div className="text-[#94a3b8]">Starting Nmap 7.93 at 2026-10-14 10:00</div>
+                  </motion.div>
+                  
+                  <div className="space-y-3 pt-2">
+                    <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: 1 }} className="flex justify-between items-center bg-[#161b27] border border-[#334155] p-3 rounded shadow">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#22c55e] font-bold">22/tcp</span>
+                        <span className="text-white">open</span>
+                        <span className="text-[#8b5cf6]">ssh</span>
+                      </div>
+                      <span className="text-xs text-[#94a3b8]">OpenSSH 8.9p1 Ubuntu</span>
+                    </motion.div>
+                    
+                    <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: 1.5 }} className="flex justify-between items-center bg-[#161b27] border border-[#334155] p-3 rounded shadow">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#22c55e] font-bold">80/tcp</span>
+                        <span className="text-white">open</span>
+                        <span className="text-[#3b82f6]">http</span>
+                      </div>
+                      <span className="text-xs text-[#94a3b8]">nginx 1.18.0</span>
+                    </motion.div>
+                    
+                    <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: 2 }} className="flex justify-between items-center bg-[#161b27] border border-[#ef4444]/50 p-3 rounded shadow">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#ef4444] font-bold">3306/tcp</span>
+                        <span className="text-white">open</span>
+                        <span className="text-[#f59e0b]">mysql</span>
+                      </div>
+                      <span className="text-xs text-[#94a3b8]">MySQL 5.7.40</span>
+                    </motion.div>
+                  </div>
+                  
+                  <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ delay: 2.5 }} className="pt-2">
+                    <div className="text-[#22c55e] flex items-center gap-2">
+                      <CheckCircle2 size={14} /> Scan completed: 1 host up
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
             </motion.div>
+            
             <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+              <div className="w-12 h-12 rounded bg-[#8b5cf6]/10 border border-[#8b5cf6]/30 flex items-center justify-center text-[#8b5cf6] mb-6">
+                <Terminal size={24} />
+              </div>
+              <h3 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">Advanced Port & <br/><span className="text-[#8b5cf6]">Service Enumeration</span></h3>
+              <p className="text-[#94a3b8] mb-8 leading-relaxed text-lg">
+                Go beyond basic port scanning. Our engine intelligently interacts with discovered services to grab banners, negotiate protocols, and fingerprint the exact software versions running on your target infrastructure.
+              </p>
+              <ul className="space-y-4">
+                {["Accurate Version Fingerprinting", "Protocol Identification (HTTP, SSH, FTP, etc.)", "Fast Asynchronous I/O", "Evasion & Stealth Configurations"].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[#cbd5e1] font-bold">
+                    <div className="bg-[#8b5cf6]/20 p-1 rounded-full"><CheckCircle2 className="text-[#8b5cf6]" size={16} /></div> {item}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          </div>
+
+          {/* Feature 3: Vulnerability Intelligence */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-2 lg:order-1">
               <div className="w-12 h-12 rounded bg-[#ef4444]/10 border border-[#ef4444]/30 flex items-center justify-center text-[#ef4444] mb-6">
                 <Shield size={24} />
               </div>
-              <h3 className="text-3xl font-black text-white mb-4">Vulnerability Intelligence</h3>
-              <p className="text-[#94a3b8] mb-8 leading-relaxed">
+              <h3 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">Vulnerability <br/><span className="text-[#ef4444]">Intelligence</span></h3>
+              <p className="text-[#94a3b8] mb-8 leading-relaxed text-lg">
                 Instantly map discovered services against the National Vulnerability Database (NVD). Our engine automatically correlates CPE matches to identify known flaws, score them using CVSS, and present prioritized remediation data.
               </p>
-              <ul className="space-y-3">
-                {["Automated CVE Enrichment", "NVD Database Integration", "Intelligent Vulnerability Correlation", "Accurate CVSS Risk Scoring", "Severity Classification", "Actionable Security Recommendations"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm text-[#cbd5e1] font-medium">
-                    <CheckCircle2 className="text-[#ef4444]" size={16} /> {item}
+              <ul className="space-y-4">
+                {["Automated CVE Enrichment", "NVD Database Integration", "Accurate CVSS Risk Scoring", "Actionable Security Recommendations"].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[#cbd5e1] font-bold">
+                    <div className="bg-[#ef4444]/20 p-1 rounded-full"><CheckCircle2 className="text-[#ef4444]" size={16} /></div> {item}
                   </li>
                 ))}
               </ul>
             </motion.div>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-2 lg:order-1">
-              <div className="w-12 h-12 rounded bg-[#8b5cf6]/10 border border-[#8b5cf6]/30 flex items-center justify-center text-[#8b5cf6] mb-6">
-                <Globe size={24} />
-              </div>
-              <h3 className="text-3xl font-black text-white mb-4">Threat Intelligence</h3>
-              <p className="text-[#94a3b8] mb-8 leading-relaxed">
-                Gain deep context into external threats. ReconSentinel interrogates global threat feeds, WHOIS databases, and DNS registries to verify domain reputation, analyze IP blacklists, and provide actionable context for identified targets.
-              </p>
-              <ul className="space-y-3">
-                {["Comprehensive IP Intelligence", "Domain Reputation Tracking", "WHOIS Registrar Insights", "Deep DNS Analysis", "Blacklist & Reputation Checks", "Adversary Threat Context"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm text-[#cbd5e1] font-medium">
-                    <CheckCircle2 className="text-[#8b5cf6]" size={16} /> {item}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-1 lg:order-2 relative h-[400px] bg-[#0f172a] border border-[#21293a] rounded-2xl p-6 overflow-hidden flex flex-col gap-4">
-              {/* CSS Dashboard Animation */}
-              <div className="flex gap-4 mb-2">
-                <div className="h-4 w-1/3 bg-[#1e293b] rounded animate-pulse"></div>
-                <div className="h-4 w-1/4 bg-[#1e293b] rounded animate-pulse"></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 flex-1">
-                <div className="bg-[#161b27] rounded-lg border border-[#334155] p-4 flex flex-col justify-between">
-                  <div className="text-xs text-[#94a3b8] mb-2 uppercase">IP Risk Score</div>
-                  <div className="flex items-end gap-2">
-                    <span className="text-4xl font-bold text-[#ef4444]">92</span>
-                    <span className="text-xs text-[#ef4444] mb-1">/100</span>
-                  </div>
-                  <div className="w-full h-1 bg-[#1e293b] mt-4 rounded overflow-hidden">
-                    <motion.div className="h-full bg-[#ef4444]" initial={{ width: "0%" }} whileInView={{ width: "92%" }} transition={{ duration: 1.5, ease: "easeOut" }} />
+            
+            <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-1 lg:order-2 group perspective-1000">
+              <div className="relative h-[450px] bg-[#0a0f1a]/80 backdrop-blur-xl border border-[#21293a] rounded-2xl p-6 flex flex-col justify-center items-center overflow-hidden transition-all duration-700 group-hover:border-[#ef4444]/50 group-hover:shadow-[0_0_40px_rgba(239,68,68,0.15)] group-hover:-translate-y-2">
+                
+                {/* Background Grid */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#ef4444]/10 via-[#0a0f1a] to-[#0a0f1a]" />
+                
+                {/* CVSS Score Gauge */}
+                <div className="relative w-40 h-40 mb-8 z-10">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#1e293b" strokeWidth="8" />
+                    <motion.circle cx="50" cy="50" r="45" fill="none" stroke="#ef4444" strokeWidth="8" strokeLinecap="round" strokeDasharray="283"
+                      initial={{ strokeDashoffset: 283, cx: 50, cy: 50, r: 45 }} whileInView={{ strokeDashoffset: 283 - (283 * 0.98) }} transition={{ duration: 2, ease: "easeOut" }} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-black text-white">9.8</span>
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-[#ef4444]">Critical</span>
                   </div>
                 </div>
-                <div className="bg-[#161b27] rounded-lg border border-[#334155] p-4 relative overflow-hidden flex items-center justify-center">
-                  <Globe className="text-[#334155] absolute w-32 h-32 opacity-30" />
-                  <div className="z-10 text-center">
-                    <div className="text-xs text-[#94a3b8] mb-1 uppercase">Location</div>
-                    <div className="font-bold text-white">Anomalous Routing</div>
-                    <div className="text-xs text-[#8b5cf6] mt-1 flex items-center justify-center gap-1"><AlertTriangle size={10}/> Detected</div>
-                  </div>
-                </div>
-              </div>
-              <div className="h-24 bg-[#161b27] rounded-lg border border-[#334155] p-4 relative">
-                <div className="text-xs text-[#94a3b8] mb-2 uppercase">Traffic Flow</div>
-                <div className="absolute bottom-0 left-0 w-full h-12 flex items-end gap-1 px-4">
-                  {[40, 20, 60, 90, 30, 50, 80, 100, 40, 60, 20].map((h, i) => (
-                    <motion.div key={i} className="flex-1 bg-[#8b5cf6]/50 rounded-t-sm" initial={{ height: 0 }} whileInView={{ height: `${h}%` }} transition={{ duration: 0.5, delay: i * 0.1 }} />
-                  ))}
+                
+                {/* Floating CVE Cards */}
+                <div className="w-full space-y-4 z-10 relative">
+                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="w-full bg-[#161b27] border border-[#ef4444]/50 rounded-lg p-4 shadow-lg flex justify-between items-center">
+                    <div>
+                      <div className="text-white font-bold mb-1">CVE-2023-44487</div>
+                      <div className="text-xs text-[#94a3b8]">HTTP/2 Rapid Reset Attack</div>
+                    </div>
+                    <div className="bg-[#ef4444]/20 text-[#ef4444] px-3 py-1 rounded text-xs font-bold">CVSS 7.5</div>
+                  </motion.div>
+                  
+                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="w-full bg-[#161b27] border border-[#f59e0b]/50 rounded-lg p-4 shadow-lg flex justify-between items-center ml-4">
+                    <div>
+                      <div className="text-white font-bold mb-1">CVE-2022-21907</div>
+                      <div className="text-xs text-[#94a3b8]">HTTP Protocol Stack RCE</div>
+                    </div>
+                    <div className="bg-[#f59e0b]/20 text-[#f59e0b] px-3 py-1 rounded text-xs font-bold">CVSS 9.8</div>
+                  </motion.div>
                 </div>
               </div>
             </motion.div>
           </div>
 
-          {/* Feature 4 */}
+          {/* Feature 4: Risk Assessment Engine */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="relative h-[400px] bg-[#161b27] border border-[#21293a] rounded-2xl p-6 flex items-center justify-center overflow-hidden">
-              {/* SVG Animation for Reporting */}
-              <svg className="w-full h-full" viewBox="0 0 400 400">
-                <rect x="50" y="100" width="300" height="200" rx="10" fill="#0f172a" stroke="#21293a" strokeWidth="2" />
-                <line x1="80" y1="260" x2="320" y2="260" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
-                <line x1="80" y1="260" x2="80" y2="120" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+            <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="group perspective-1000">
+              <div className="relative h-[450px] bg-[#0a0f1a]/80 backdrop-blur-xl border border-[#21293a] rounded-2xl p-6 flex flex-col justify-center items-center overflow-hidden transition-all duration-700 group-hover:border-[#eab308]/50 group-hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] group-hover:-translate-y-2">
                 
-                <motion.rect x="100" y="220" width="30" height="40" fill="#3b82f6" rx="2" initial={{ y: 260, height: 0 }} whileInView={{ y: 220, height: 40 }} transition={{ duration: 1 }} />
-                <motion.rect x="150" y="180" width="30" height="80" fill="#22c55e" rx="2" initial={{ y: 260, height: 0 }} whileInView={{ y: 180, height: 80 }} transition={{ duration: 1, delay: 0.2 }} />
-                <motion.rect x="200" y="140" width="30" height="120" fill="#eab308" rx="2" initial={{ y: 260, height: 0 }} whileInView={{ y: 140, height: 120 }} transition={{ duration: 1, delay: 0.4 }} />
-                <motion.rect x="250" y="100" width="30" height="160" fill="#ef4444" rx="2" initial={{ y: 260, height: 0 }} whileInView={{ y: 100, height: 160 }} transition={{ duration: 1, delay: 0.6 }} />
-                
-                <motion.path d="M 115 200 L 165 140 L 215 170 L 265 80" fill="none" stroke="#fff" strokeWidth="3" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 1 }} />
-                <motion.circle cx="265" cy="80" r="5" fill="#fff" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ delay: 2.5 }} />
-              </svg>
+                {/* Risk Heatmap Matrix */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                  <div className="grid grid-cols-8 gap-2">
+                    {Array.from({ length: 64 }).map((_, i) => {
+                      const isHigh = i % 7 === 0;
+                      const isMed = i % 5 === 0;
+                      const color = isHigh ? 'bg-[#ef4444]' : isMed ? 'bg-[#f59e0b]' : 'bg-[#22c55e]';
+                      return (
+                        <motion.div key={i} className={`w-8 h-8 rounded-sm ${color}`}
+                          initial={{ opacity: 0.1 }}
+                          animate={{ opacity: [0.1, 0.6, 0.1] }}
+                          transition={{ duration: Math.random() * 3 + 2, repeat: Infinity }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Dashboard Elements */}
+                <div className="relative z-10 w-full space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <motion.div initial={{ scale: 0.8, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }} className="bg-[#161b27]/90 backdrop-blur border border-[#334155] p-5 rounded-xl text-center shadow-lg">
+                      <div className="text-[10px] text-[#94a3b8] uppercase font-bold tracking-widest mb-1">Total Assets</div>
+                      <div className="text-3xl font-black text-white">1,204</div>
+                    </motion.div>
+                    <motion.div initial={{ scale: 0.8, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 0.4 }} className="bg-[#161b27]/90 backdrop-blur border border-[#ef4444]/50 p-5 rounded-xl text-center shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+                      <div className="text-[10px] text-[#ef4444] uppercase font-bold tracking-widest mb-1">High Risk</div>
+                      <div className="text-3xl font-black text-white">42</div>
+                    </motion.div>
+                  </div>
+                  
+                  <div className="bg-[#161b27]/90 backdrop-blur border border-[#334155] p-6 rounded-xl space-y-5 shadow-lg">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold text-white"><span className="text-[#ef4444]">Critical</span><span>12%</span></div>
+                      <div className="w-full h-2 bg-[#05080f] rounded-full overflow-hidden">
+                        <motion.div className="h-full bg-[#ef4444]" initial={{ width: 0 }} whileInView={{ width: "12%" }} transition={{ duration: 1 }} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold text-white"><span className="text-[#f59e0b]">High</span><span>28%</span></div>
+                      <div className="w-full h-2 bg-[#05080f] rounded-full overflow-hidden">
+                        <motion.div className="h-full bg-[#f59e0b]" initial={{ width: 0 }} whileInView={{ width: "28%" }} transition={{ duration: 1, delay: 0.2 }} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold text-white"><span className="text-[#22c55e]">Low</span><span>60%</span></div>
+                      <div className="w-full h-2 bg-[#05080f] rounded-full overflow-hidden">
+                        <motion.div className="h-full bg-[#22c55e]" initial={{ width: 0 }} whileInView={{ width: "60%" }} transition={{ duration: 1, delay: 0.4 }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </motion.div>
+            
             <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <div className="w-12 h-12 rounded bg-[#eab308]/10 border border-[#eab308]/30 flex items-center justify-center text-[#eab308] mb-6">
-                <BarChart3 size={24} />
+                <AlertTriangle size={24} />
               </div>
-              <h3 className="text-3xl font-black text-white mb-4">Security Reporting & Analytics</h3>
-              <p className="text-[#94a3b8] mb-8 leading-relaxed">
-                Translate raw scanning data into executive-level insights. Track remediation efforts over time, analyze security trends, and export compliant, fully-featured PDF assessments for stakeholders.
+              <h3 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">Risk Assessment <br/><span className="text-[#eab308]">Engine</span></h3>
+              <p className="text-[#94a3b8] mb-8 leading-relaxed text-lg">
+                Translate raw scanning data into executive-level insights. Our proprietary risk engine aggregates CVSS scores, calculates organizational impact, and visualizes security posture across your entire attack surface.
               </p>
-              <ul className="space-y-3">
-                {["Historical Scan Timeline", "Centralized Risk Dashboard", "Executive Summaries", "Professional PDF Exports", "Persistent Scan History", "Risk Trend Analysis"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm text-[#cbd5e1] font-medium">
-                    <CheckCircle2 className="text-[#eab308]" size={16} /> {item}
+              <ul className="space-y-4">
+                {["Centralized Risk Dashboard", "Organizational Impact Scoring", "Interactive Threat Heatmaps", "Trend & Posture Analysis"].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[#cbd5e1] font-bold">
+                    <div className="bg-[#eab308]/20 p-1 rounded-full"><CheckCircle2 className="text-[#eab308]" size={16} /></div> {item}
                   </li>
                 ))}
               </ul>
             </motion.div>
           </div>
 
-          {/* Feature 5 */}
+          {/* Feature 5: Professional Report Generation */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-2 lg:order-1">
               <div className="w-12 h-12 rounded bg-[#22c55e]/10 border border-[#22c55e]/30 flex items-center justify-center text-[#22c55e] mb-6">
-                <Cpu size={24} />
+                <FileText size={24} />
               </div>
-              <h3 className="text-3xl font-black text-white mb-4">AI Security Assistant</h3>
-              <p className="text-[#94a3b8] mb-8 leading-relaxed">
-                Don't just discover vulnerabilities—understand them. Our integrated AI co-pilot analyzes your specific scan results, explains attack vectors in plain English, and provides tailored mitigation commands.
+              <h3 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">Professional Report <br/><span className="text-[#22c55e]">Generation</span></h3>
+              <p className="text-[#94a3b8] mb-8 leading-relaxed text-lg">
+                Generate compliant, executive-ready PDF assessments in seconds. Automatically export detailed vulnerability findings, scan summaries, and AI-driven mitigation steps to share with stakeholders or compliance auditors.
               </p>
-              <ul className="space-y-3">
-                {["Contextual AI-Powered Analysis", "Plain English Scan Explanations", "Tailored Security Recommendations", "Automated MITRE ATT&CK Mapping", "Attack Surface Insights", "Defensive Hardening Guidance"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm text-[#cbd5e1] font-medium">
-                    <CheckCircle2 className="text-[#22c55e]" size={16} /> {item}
+              <ul className="space-y-4">
+                {["Executive Summaries", "Professional PDF Exports", "Actionable Mitigation Plans", "Compliance-Ready Formatting"].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[#cbd5e1] font-bold">
+                    <div className="bg-[#22c55e]/20 p-1 rounded-full"><CheckCircle2 className="text-[#22c55e]" size={16} /></div> {item}
                   </li>
                 ))}
               </ul>
             </motion.div>
-            <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-1 lg:order-2 relative h-[400px] bg-[#161b27] border border-[#21293a] rounded-2xl p-6 flex flex-col justify-end overflow-hidden">
-              {/* CSS Animation for AI Chat */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#161b27] via-transparent to-transparent z-10" />
-              <div className="space-y-4 relative z-0">
-                <motion.div className="flex gap-3 max-w-[80%] ml-auto" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  <div className="bg-[#1e293b] border border-[#334155] p-3 rounded-lg rounded-tr-none text-xs text-[#cbd5e1]">
-                    Explain CVE-2023-1234 and how I can patch it on Ubuntu.
+            
+            <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="order-1 lg:order-2 group perspective-1000">
+              <div className="relative h-[450px] bg-[#0a0f1a]/80 backdrop-blur-xl border border-[#21293a] rounded-2xl p-6 flex items-center justify-center overflow-hidden transition-all duration-700 group-hover:border-[#22c55e]/50 group-hover:shadow-[0_0_40px_rgba(34,197,94,0.15)] group-hover:-translate-y-2">
+                
+                {/* Floating PDF Document */}
+                <motion.div 
+                  initial={{ y: 50, opacity: 0 }} 
+                  whileInView={{ y: 0, opacity: 1 }} 
+                  transition={{ duration: 0.8 }}
+                  className="w-[280px] h-[360px] bg-white rounded-lg shadow-2xl relative overflow-hidden flex flex-col"
+                >
+                  {/* PDF Header */}
+                  <div className="h-16 bg-[#1e293b] flex items-center px-6">
+                    <div className="flex items-center gap-2">
+                      <Shield size={16} className="text-[#3b82f6]" />
+                      <span className="font-extrabold text-[10px] tracking-widest text-[#f1f5f9]">RECONSENTINEL</span>
+                    </div>
                   </div>
+                  
+                  {/* PDF Content */}
+                  <div className="p-6 flex-1 bg-[#f8fafc]">
+                    <div className="w-3/4 h-6 bg-[#cbd5e1] rounded mb-6" />
+                    
+                    <div className="flex gap-4 mb-6">
+                      <div className="flex-1 h-20 bg-[#e2e8f0] rounded-md border-l-4 border-[#ef4444] p-3 flex flex-col justify-center">
+                        <div className="w-12 h-3 bg-[#cbd5e1] rounded mb-2" />
+                        <div className="w-8 h-6 bg-[#ef4444] rounded" />
+                      </div>
+                      <div className="flex-1 h-20 bg-[#e2e8f0] rounded-md border-l-4 border-[#f59e0b] p-3 flex flex-col justify-center">
+                        <div className="w-12 h-3 bg-[#cbd5e1] rounded mb-2" />
+                        <div className="w-8 h-6 bg-[#f59e0b] rounded" />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="w-full h-4 bg-[#e2e8f0] rounded" />
+                      <div className="w-full h-4 bg-[#e2e8f0] rounded" />
+                      <div className="w-5/6 h-4 bg-[#e2e8f0] rounded" />
+                      <div className="w-4/6 h-4 bg-[#e2e8f0] rounded" />
+                    </div>
+                  </div>
+                  
+                  {/* Scanning overlay effect */}
+                  <motion.div 
+                    className="absolute top-0 left-0 w-full h-1 bg-[#3b82f6] shadow-[0_0_10px_#3b82f6]"
+                    animate={{ y: [0, 360, 0] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  />
                 </motion.div>
-                <motion.div className="flex gap-3 max-w-[90%]" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 1 }}>
-                  <div className="w-8 h-8 rounded-full bg-[#22c55e]/20 border border-[#22c55e]/50 flex items-center justify-center flex-shrink-0">
-                    <Bot size={14} className="text-[#22c55e]" />
-                  </div>
-                  <div className="bg-[#3b82f6]/10 border border-[#3b82f6]/30 p-4 rounded-lg rounded-tl-none text-xs text-[#e2e8f0] leading-relaxed shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-                    <span className="text-[#3b82f6] font-bold mb-1 block">Vulnerability Analysis:</span>
-                    This CVE allows remote code execution via unauthenticated API endpoints.
-                    <br/><br/>
-                    <span className="text-[#22c55e] font-bold mb-1 block">Mitigation (Ubuntu):</span>
-                    <code className="bg-[#0f172a] px-2 py-1 rounded text-[#94a3b8] mt-1 block border border-[#21293a]">sudo apt update && sudo apt upgrade nginx</code>
-                  </div>
-                </motion.div>
+                
               </div>
             </motion.div>
           </div>
@@ -601,16 +757,16 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button 
-              onClick={() => navigate('/dashboard')}
-              className="w-full sm:w-auto bg-[#3b82f6] hover:bg-[#2563eb] text-white px-10 py-4 rounded font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2"
+              onClick={() => navigate('/recon-console')}
+              className="w-full sm:w-auto bg-[#3b82f6] hover:bg-[#2563eb] text-white h-[52px] px-8 rounded text-base font-semibold leading-tight tracking-normal transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2"
             >
-              Launch Console <ArrowRight size={18} />
+              Launch Console <ArrowRight size={20} />
             </button>
             <button 
               onClick={() => navigate('/documentation')}
-              className="w-full sm:w-auto bg-transparent hover:bg-[#161b27] border border-[#334155] text-white px-10 py-4 rounded font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto bg-transparent hover:bg-[#161b27] border border-[#334155] text-white h-[48px] px-8 rounded text-base font-semibold leading-tight tracking-normal transition-all flex items-center justify-center gap-2"
             >
-              View Documentation <FileText size={18} />
+              View Documentation <FileText size={20} />
             </button>
           </div>
         </div>
@@ -637,7 +793,7 @@ export default function LandingPage() {
               <p className="text-xs text-[#94a3b8]">Reach out directly to our security engineers for technical assistance.</p>
             </motion.a>
             <motion.a 
-              href="https://github.com/Gyanaranjan2234/NetReconX/issues" target="_blank" rel="noopener noreferrer"
+              href="https://github.com/Gyanaranjan2234/ReconSentinel/issues" target="_blank" rel="noopener noreferrer"
               whileHover={{ y: -5 }}
               className="bg-[#161b27] border border-[#21293a] p-6 rounded-xl flex flex-col items-center text-center hover:border-[#22c55e]/50 transition-colors group relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#22c55e]/50"
             >
@@ -723,7 +879,7 @@ export default function LandingPage() {
               <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-6">Support</h4>
               <ul className="space-y-3 text-sm text-[#94a3b8]">
                 <li><a href="#contact" className="hover:text-[#3b82f6] transition-colors">Contact Support</a></li>
-                <li><a href="https://github.com/gyanaranjan2234/NetReconX/issues" target="_blank" rel="noreferrer" className="hover:text-[#3b82f6] transition-colors">Report a Bug</a></li>
+                <li><a href="https://github.com/gyanaranjan2234/ReconSentinel/issues" target="_blank" rel="noreferrer" className="hover:text-[#3b82f6] transition-colors">Report a Bug</a></li>
                 <li><a href="/privacy-policy" className="hover:text-[#3b82f6] transition-colors">Privacy Policy</a></li>
                 <li><a href="/terms-of-use" className="hover:text-[#3b82f6] transition-colors">Terms of Use</a></li>
               </ul>

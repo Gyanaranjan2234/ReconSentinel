@@ -20,9 +20,9 @@ export default function TermsOfUse() {
           </div>
           <button 
             onClick={() => navigate('/')}
-            className="text-[#94a3b8] hover:text-white transition-colors flex items-center gap-2 text-sm font-semibold tracking-wider uppercase"
+            className="text-[#94a3b8] hover:text-white h-[48px] px-6 rounded text-base font-semibold leading-tight tracking-normal transition-colors flex items-center justify-center gap-2"
           >
-            <ArrowLeft size={16} /> Back to Home
+            <ArrowLeft size={20} /> Back to Home
           </button>
         </div>
       </nav>

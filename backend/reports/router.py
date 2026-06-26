@@ -1,30 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
-from database import get_db
-import models
 import os
 import tempfile
+import uuid
+from fastapi import APIRouter
+from fastapi.responses import FileResponse
 from reports.service import build_pdf_report
+from schemas import ScanResultResponse
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
-@router.get("/generate/{scan_id}")
-def generate_pdf_report(scan_id: int, db: Session = Depends(get_db)):
+@router.post("/generate")
+def generate_pdf_report(scan: ScanResultResponse):
     """
     Generates a secure PDF download of a specific scan's report using ReportLab.
     """
-    scan = db.query(models.ScanResult).filter(models.ScanResult.id == scan_id).first()
-    if not scan:
-        raise HTTPException(status_code=404, detail="Scan result not found")
-
     temp_dir = tempfile.gettempdir()
-    pdf_path = os.path.join(temp_dir, f"ReconSentinel_Report_{scan_id}.pdf")
+    # Use a UUID to avoid conflicts
+    report_id = str(uuid.uuid4())
+    pdf_path = os.path.join(temp_dir, f"ReconSentinel_Report_{report_id}.pdf")
 
     build_pdf_report(scan, pdf_path)
 
     return FileResponse(
         path=pdf_path,
         media_type="application/pdf",
-        filename=f"ReconSentinel_Report_{scan_id}.pdf"
+        filename=f"ReconSentinel_Report.pdf"
     )

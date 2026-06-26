@@ -20,7 +20,7 @@ class ScanCreate(BaseModel):
 
 
 class ScanResultResponse(BaseModel):
-    id: int
+    id: str
     target: str
     status: str
     created_at: datetime
@@ -29,19 +29,11 @@ class ScanResultResponse(BaseModel):
     duration: Optional[float] = None
     results: Optional[Dict[str, Any]]
 
-    class Config:
-        from_attributes = True
-        orm_mode = True
-
 
 class ThreatIntelResponse(BaseModel):
-    id: int
+    id: str
     query: str
     intelligence_type: str
     summary: str
     raw_response: Dict[str, Any]
     created_at: datetime
-
-    class Config:
-        from_attributes = True
-        orm_mode = True

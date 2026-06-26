@@ -3,70 +3,44 @@ import sys
 import logging
 from datetime import datetime
 import socket
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from database import get_db, SessionLocal
-import models
+import uuid
+from fastapi import APIRouter, HTTPException, status
 from scanner.service import authorize_target, normalize_port_range, run_nmap_scan, ping_target
 from schemas import ScanCreate, ScanResultResponse
 
 router = APIRouter(prefix="/scan", tags=["Scanner"])
 
-
-def clear_all_scans(db: Session = Depends(get_db)):
-    """
-    Clear all scan results history.
-    """
-    try:
-        deleted = db.query(models.ScanResult).delete()
-        db.commit()
-        logging.info(f"Cleared {deleted} scan record(s) from history.")
-        return {"message": f"All scan history cleared successfully ({deleted} records deleted)"}
-    except Exception as exc:
-        db.rollback()
-        logging.error(f"Failed to clear scan history: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database error: {str(exc)}")
-
-# Register DELETE on both /scan/ and /scan (no trailing slash)
-router.add_api_route("/", clear_all_scans, methods=["DELETE"], status_code=status.HTTP_200_OK)
-router.add_api_route("", clear_all_scans, methods=["DELETE"], status_code=status.HTTP_200_OK)
-
+# In-memory store for stateless scans
+active_scans = {}
 
 def update_scan_record(
-    scan_id: int, 
+    scan_id: str, 
     status_text: str, 
     results: dict, 
     start_time: datetime = None, 
     end_time: datetime = None, 
     duration: float = None
 ) -> None:
-    db = SessionLocal()
-    try:
-        scan = db.query(models.ScanResult).filter(models.ScanResult.id == scan_id).first()
-        if scan:
-            progress_val = results.get("progress", "?") if isinstance(results, dict) else "?"
-            stage_val = results.get("stage", "?") if isinstance(results, dict) else "?"
-            msg = f"[SCAN {scan_id}] Updating: status={status_text}, progress={progress_val}%, stage={stage_val}\n"
-            sys.stdout.write(msg)
-            sys.stdout.flush()
-            scan.status = status_text
-            scan.results = dict(results)
-            if start_time:
-                scan.start_time = start_time
-            if end_time:
-                scan.end_time = end_time
-            if duration is not None:
-                scan.duration = duration
-            from sqlalchemy.orm.attributes import flag_modified
-            flag_modified(scan, "results")
-            db.commit()
-            # ensure the session reflects the committed state
-            db.refresh(scan)
-    finally:
-        db.close()
+    if scan_id in active_scans:
+        scan = active_scans[scan_id]
+        
+        progress_val = results.get("progress", "?") if isinstance(results, dict) else "?"
+        stage_val = results.get("stage", "?") if isinstance(results, dict) else "?"
+        msg = f"[SCAN {scan_id}] Updating: status={status_text}, progress={progress_val}%, stage={stage_val}\n"
+        sys.stdout.write(msg)
+        sys.stdout.flush()
+        
+        scan["status"] = status_text
+        scan["results"] = dict(results)
+        if start_time:
+            scan["start_time"] = start_time
+        if end_time:
+            scan["end_time"] = end_time
+        if duration is not None:
+            scan["duration"] = duration
 
 
-def run_scan_job(scan_id: int, scan_data: dict) -> None:
+def run_scan_job(scan_id: str, scan_data: dict) -> None:
     start_time = datetime.utcnow()
     try:
         progress = {
@@ -154,86 +128,60 @@ def run_scan_job(scan_id: int, scan_data: dict) -> None:
 
 
 @router.post("/", response_model=ScanResultResponse, status_code=status.HTTP_201_CREATED)
-async def trigger_scan(scan_request: ScanCreate, db: Session = Depends(get_db)):
+async def trigger_scan(scan_request: ScanCreate):
     """
     Trigger a network/host scanner task for authorized targets.
     """
+    import traceback
     try:
-        authorize_target(scan_request.target)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        try:
+            authorize_target(scan_request.target)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    try:
-        db_scan = models.ScanResult(
-            target=scan_request.target,
-            status="scanning",
-            results={"stage": "queued", "progress": 0, "target": scan_request.target},
-        )
-        db.add(db_scan)
-        db.commit()
-        db.refresh(db_scan)
-    except Exception as exc:
-        logging.error(f"Database error while creating scan: {exc}", exc_info=True)
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Database error while creating scan")
-
-    try:
-        # Use model_dump for Pydantic V2 compatibility, fallback to dict for V1
+        scan_id = str(uuid.uuid4())
         scan_data = scan_request.model_dump() if hasattr(scan_request, "model_dump") else scan_request.dict()
-        asyncio.create_task(asyncio.to_thread(run_scan_job, db_scan.id, scan_data))
-    except Exception as exc:
-        logging.error(f"Error starting background scan task: {exc}", exc_info=True)
         
-    return db_scan
+        active_scans[scan_id] = {
+            "id": scan_id,
+            "target": scan_request.target,
+            "status": "scanning",
+            "created_at": datetime.utcnow(),
+            "start_time": None,
+            "end_time": None,
+            "duration": None,
+            "results": {"stage": "queued", "progress": 0, "target": scan_request.target},
+        }
 
-
-@router.get("/", response_model=list[ScanResultResponse])
-def list_scans(db: Session = Depends(get_db)):
-    """
-    List all scan histories.
-    """
-    try:
-        return db.query(models.ScanResult).order_by(models.ScanResult.id.desc()).all()
-    except Exception as exc:
-        logging.error(f"Error fetching scans: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error while fetching scans")
-
-
-@router.get("/{scan_id}", response_model=ScanResultResponse)
-def get_scan(scan_id: int, db: Session = Depends(get_db)):
-    """
-    Get detailed results of a specific scan.
-    """
-    try:
-        scan = db.query(models.ScanResult).filter(models.ScanResult.id == scan_id).first()
-        if not scan:
-            raise HTTPException(status_code=404, detail="Scan result not found")
-        return scan
+        try:
+            asyncio.create_task(asyncio.to_thread(run_scan_job, scan_id, scan_data))
+        except Exception as exc:
+            logging.error(f"Error starting background scan task: {exc}", exc_info=True)
+            active_scans[scan_id]["status"] = "failed"
+            
+        return active_scans[scan_id]
     except HTTPException:
         raise
     except Exception as exc:
-        logging.error(f"Error fetching scan {scan_id}: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal Server Error while fetching scan {scan_id}")
+        logging.error(f"Unhandled exception in trigger_scan: {exc}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/progress/{scan_id}")
-def get_scan_progress(scan_id: int, db: Session = Depends(get_db)):
+def get_scan_progress(scan_id: str):
     """
     Retrieve the current progress state for an active scan.
     """
-    try:
-        scan = db.query(models.ScanResult).filter(models.ScanResult.id == scan_id).first()
-        if not scan:
-            raise HTTPException(status_code=404, detail="Scan result not found")
-        return {
-            "id": scan.id,
-            "target": scan.target,
-            "status": scan.status,
-            "results": scan.results,
-            "created_at": scan.created_at,
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logging.error(f"Error fetching scan progress {scan_id}: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal Server Error while fetching scan progress {scan_id}")
+    if scan_id not in active_scans:
+        raise HTTPException(status_code=404, detail="Scan result not found")
+        
+    return active_scans[scan_id]
+
+@router.get("/{scan_id}", response_model=ScanResultResponse)
+def get_scan(scan_id: str):
+    """
+    Get detailed results of a specific scan.
+    """
+    if scan_id not in active_scans:
+        raise HTTPException(status_code=404, detail="Scan result not found")
+    return active_scans[scan_id]
