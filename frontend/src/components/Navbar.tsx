@@ -12,7 +12,7 @@ export default function Navbar() {
                 <Shield size={22} />
               </div>
               <span className="font-extrabold text-xl tracking-wider text-white">
-                NETRECON<span className="text-accent">X</span>
+                <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
               </span>
             </Link>
           </div>

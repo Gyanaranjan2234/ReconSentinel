@@ -1,6 +1,7 @@
 # Environments
 .env
 .env.*
+!.env.example
 .venv/
 venv/
 env/
@@ -42,7 +43,15 @@ Thumbs.db
 
 # Application Specific Output
 uploads/
-reports/generated/
+downloads/
+reports/
+generated_reports/
+scan_reports/
+pdf_reports/
+exports/
+screenshots/
 scan_outputs/
 tmp/
 temp/
+*.tmp
+.cache/

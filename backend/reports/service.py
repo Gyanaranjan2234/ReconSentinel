@@ -41,15 +41,21 @@ def get_ports_scanned_count(port_range: str) -> int:
 def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     cves = []
     for p in ports:
-        try:
-            port_num = int(p.get("port", 0))
-        except ValueError:
-            port_num = 0
         service = p.get("service", "").lower()
-        version = p.get("version", "").lower()
+        version = p.get("version", "")
+        version_lower = version.lower()
 
-        if "squid" in service or "squid" in version or port_num == 8080:
-            if not any(c["id"] == "CVE-2023-45897" for c in cves):
+        if not version or version_lower == "unknown":
+            continue
+
+        if "squid" in service or "squid" in version_lower:
+            confidence = None
+            if "5.0" in version_lower or "5.1" in version_lower or "5.2" in version_lower:
+                confidence = "High"
+            elif "5." in version_lower:
+                confidence = "Low"
+                
+            if confidence and not any(c["id"] == "CVE-2023-45897" for c in cves):
                 cves.append({
                     "id": "CVE-2023-45897",
                     "cvss": 9.8,
@@ -57,10 +63,18 @@ def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "description": "The Squid proxy remote code execution flaw allows remote attackers to execute arbitrary code via unverified HTTP requests.",
                     "published_date": "2023-10-15",
                     "references": "https://nvd.nist.gov/vuln/detail/CVE-2023-45897",
-                    "mitre": "Exploit Public-Facing Application (T1190), Remote Access Software (T1219)"
+                    "mitre": "Exploit Public-Facing Application (T1190), Remote Access Software (T1219)",
+                    "confidence": confidence
                 })
-        if "apache" in service or "apache" in version or port_num == 80:
-            if not any(c["id"] == "CVE-2021-40438" for c in cves):
+
+        if "apache" in service or "apache" in version_lower:
+            confidence = None
+            if "2.4.48" in version_lower or "2.4.49" in version_lower:
+                confidence = "High"
+            elif "2.4" in version_lower:
+                confidence = "Low"
+            
+            if confidence and not any(c["id"] == "CVE-2021-40438" for c in cves):
                 cves.append({
                     "id": "CVE-2021-40438",
                     "cvss": 7.5,
@@ -68,10 +82,18 @@ def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "description": "Apache HTTP Server mod_proxy SSRF vulnerability allows remote attackers to coerce the server into routing requests to arbitrary endpoints.",
                     "published_date": "2021-09-16",
                     "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-40438",
-                    "mitre": "Exploit Public-Facing Application (T1190)"
+                    "mitre": "Exploit Public-Facing Application (T1190)",
+                    "confidence": confidence
                 })
-        if "ssh" in service or "ssh" in version or port_num == 22:
-            if not any(c["id"] == "CVE-2024-6387" for c in cves):
+
+        if "ssh" in service or "ssh" in version_lower:
+            confidence = None
+            if any(v in version_lower for v in ["8.5", "8.6", "8.7", "8.8", "8.9", "9.0", "9.1", "9.2", "9.3", "9.4", "9.5", "9.6", "9.7"]):
+                confidence = "High"
+            elif "9.8" not in version_lower:
+                confidence = "Low"
+                
+            if confidence and not any(c["id"] == "CVE-2024-6387" for c in cves):
                 cves.append({
                     "id": "CVE-2024-6387",
                     "cvss": 8.1,
@@ -79,7 +101,8 @@ def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "description": "A signal handler race condition vulnerability was found in OpenSSH's server (sshd), allowing unauthenticated remote code execution as root.",
                     "published_date": "2024-07-01",
                     "references": "https://nvd.nist.gov/vuln/detail/CVE-2024-6387",
-                    "mitre": "Exploit Public-Facing Application (T1190)"
+                    "mitre": "Exploit Public-Facing Application (T1190)",
+                    "confidence": confidence
                 })
     return cves
 
@@ -162,7 +185,7 @@ def build_pdf_report(scan: Any, pdf_path: str) -> None:
     story = []
     
     # 1. Main Header block
-    story.append(Paragraph("NetReconX Security Assessment Report", title_style))
+    story.append(Paragraph("ReconSentinel Security Assessment Report", title_style))
     story.append(Paragraph("Automated Network Reconnaissance & Penetration Audit Logs", body_style))
     story.append(Spacer(1, 10))
 
@@ -355,9 +378,10 @@ def build_pdf_report(scan: Any, pdf_path: str) -> None:
     story.append(Paragraph("Vulnerability Intelligence & MITRE ATT&CK Mapping", section_style))
     if cves:
         for cve in cves:
+            match_status = "Confirmed Vulnerability" if cve.get("confidence") == "High" else "Potential Match"
             cve_header = [
                 [
-                    Paragraph(f"<b>Vulnerability: {cve['id']}</b>", table_header_style), 
+                    Paragraph(f"<b>{match_status}: {cve['id']}</b>", table_header_style), 
                     Paragraph(f"<b>CVSS {cve['cvss']} ({cve['severity']})</b>", table_header_style)
                 ]
             ]
@@ -394,23 +418,21 @@ def build_pdf_report(scan: Any, pdf_path: str) -> None:
     if len(ports) == 0:
         recommendations.append("No open services discovered. Maintain periodic audits and firewall egress policies to block unauthorized traffic.")
     else:
-        if any(p.get("service", "").lower().startswith("ftp") for p in ports):
+        services = [p.get("service", "").lower() for p in ports]
+        if any(s.startswith("ftp") for s in services):
             recommendations.append("<b>Deprecate Unencrypted FTP:</b> FTP transmits credentials in cleartext. Upgrade FTP endpoints to secure SSH File Transfer Protocol (SFTP) or FTPS to prevent transport eavesdropping.")
-        if any(p.get("service", "").lower() == "http" for p in ports):
-            recommendations.append("<b>Migrate to HTTPS:</b> Cleartext HTTP detected. Upgrade the service to secure transport layer security (TLS 1.3) with an authorized TLS certificate.")
+        if any("http" in s for s in services):
+            recommendations.append("<b>Review HTTP Services:</b> Cleartext HTTP may be exposed. Ensure services are running over secure transport layer security (TLS) with authorized certificates.")
         if any(c["id"] == "CVE-2023-45897" for c in cves):
             recommendations.append("<b>Patch Squid Proxy Daemon:</b> Apply patches or upgrade Squid service past version 5.2 immediately to secure internal loopback interfaces against unauthenticated RCE.")
         if any(c["id"] == "CVE-2021-40438" for c in cves):
             recommendations.append("<b>Upgrade Apache HTTP Server:</b> Upgrade httpd daemon past version 2.4.51 to resolve mod_proxy SSRF vulnerability CVE-2021-40438.")
         if any(c["id"] == "CVE-2024-6387" for c in cves):
-            recommendations.append("<b>Mitigate OpenSSH RegreSSHion vulnerability:</b> Upgrade OpenSSH daemon to 9.8p1 or later. Alternatively, restrict port 22 access via firewall ACLs or set LoginGraceTime to 0 in sshd_config.")
-        if any(p.get("port") == "3389" for p in ports):
-            recommendations.append("<b>Restrict RDP Access:</b> Port 3389 is exposed. Ensure Remote Desktop Protocol is placed behind a secure VPN gateway and Multi-Factor Authentication is enabled.")
-        if any(p.get("port") == "3306" for p in ports):
-            recommendations.append("<b>Bind Database Local Only:</b> MySQL listener detected on public port 3306. Restrict binding to 127.0.0.1 and disable public login authorizations.")
-            
-        recommendations.append("<b>Enforce firewall egress limits:</b> Restrict outgoing network connections from servers to essential repositories and API ports only.")
-        recommendations.append("<b>Regular assessment audits:</b> Conduct continuous authenticated port scans to identify unexpected services, versions, or configuration changes.")
+            recommendations.append("<b>Mitigate OpenSSH RegreSSHion vulnerability:</b> Upgrade OpenSSH daemon to 9.8p1 or later. Alternatively, restrict SSH access via firewall ACLs or set LoginGraceTime to 0 in sshd_config.")
+        if any("rdp" in s or "ms-wbt-server" in s for s in services):
+            recommendations.append("<b>Restrict RDP Access:</b> Remote Desktop Protocol exposed. Ensure RDP is placed behind a secure VPN gateway and Multi-Factor Authentication is enabled.")
+        if any("mysql" in s for s in services):
+            recommendations.append("<b>Bind Database Local Only:</b> MySQL listener detected. Restrict binding to 127.0.0.1 and disable public login authorizations.")
 
     for rec in recommendations:
         bullet_item = f"&bull; {rec}"
@@ -420,7 +442,7 @@ def build_pdf_report(scan: Any, pdf_path: str) -> None:
     # Section 7: Footer Notes
     story.append(Paragraph("Audit Notes", section_style))
     story.append(Paragraph(
-        "This security report was compiled dynamically by the NetReconX Console. "
+        "This security report was compiled dynamically by the ReconSentinel Console. "
         "Every value and metric is verified from actual port handshake scans and vulnerability databases. "
         "This data is intended strictly for authorized security assessment and network debugging use only.",
         body_style

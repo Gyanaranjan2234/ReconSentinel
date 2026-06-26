@@ -19,12 +19,12 @@ def generate_pdf_report(scan_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Scan result not found")
 
     temp_dir = tempfile.gettempdir()
-    pdf_path = os.path.join(temp_dir, f"NetReconX_Report_{scan_id}.pdf")
+    pdf_path = os.path.join(temp_dir, f"ReconSentinel_Report_{scan_id}.pdf")
 
     build_pdf_report(scan, pdf_path)
 
     return FileResponse(
         path=pdf_path,
         media_type="application/pdf",
-        filename=f"NetReconX_Report_{scan_id}.pdf"
+        filename=f"ReconSentinel_Report_{scan_id}.pdf"
     )

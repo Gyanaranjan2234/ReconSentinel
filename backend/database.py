@@ -2,7 +2,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./netreconx.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./reconsentinel.db")
 
 # For sqlite, prevent thread sharing errors by passing check_same_thread=False
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}

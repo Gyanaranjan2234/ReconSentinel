@@ -1,6 +1,6 @@
-# NetReconX
+# ReconSentinel
 
-NetReconX is a dual-use, educational cybersecurity web application dashboard facilitating secure network scanning demonstration simulations and mock threat intelligence lookups.
+ReconSentinel is an Intelligent Network Reconnaissance & Threat Intelligence Platform facilitating secure network scanning demonstration simulations and mock threat intelligence lookups.
 
 ## Features
 - **Reconnaissance Hub:** Safe simulation of vulnerability scans and open port mapping.
@@ -12,7 +12,7 @@ NetReconX is a dual-use, educational cybersecurity web application dashboard fac
 
 ## Directory Structure
 ```
-NetReconX/
+ReconSentinel/
 ├── backend/
 │   ├── scanner/
 │   │   └── router.py

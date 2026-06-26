@@ -22,7 +22,7 @@ import {
 import axios from 'axios';
 import { useScan } from '../hooks/useScan';
 import { ScanResult, ThreatIntel } from '../types';
-import { Tab } from '../App';
+import { Tab } from './DashboardLayout';
 
 // Port details mapper interfaces
 interface EnrichedPort {
@@ -164,6 +164,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
   const [intelType, setIntelType] = useState('CVE');
   const [intelResult, setIntelResult] = useState<ThreatIntel | null>(null);
   const [intelLoading, setIntelLoading] = useState(false);
+  const [intelValidationError, setIntelValidationError] = useState('');
   
   const [activeScan, setActiveScan] = useState<ScanResult | null>(null);
   
@@ -204,7 +205,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'user' | 'assistant', text: string, time: string }>>([
     { 
       sender: 'assistant', 
-      text: 'Hello! I am your NetReconX Copilot. I can analyze your network scans, explain CVEs, or suggest remediation configurations. Try asking about a CVE or target host.', 
+      text: 'Hello! I am your ReconSentinel Copilot. I can analyze your network scans, explain CVEs, or suggest remediation configurations. Try asking about a CVE or target host.', 
       time: '09:00 AM' 
     }
   ]);
@@ -379,7 +380,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
       riskColor = 'text-[#ef4444] border-[#ef4444]/30 bg-[#ef4444]/10';
     } else if (riskLevel === 'Medium') {
       riskColor = 'text-[#eab308] border-[#eab308]/30 bg-[#eab308]/10';
-    } else if (riskLevel === 'Unknown' || riskLevel === 'Not Assessed') {
+    } else if (riskLevel === 'Not Assessed') {
       riskColor = 'text-[#64748b] border-[#64748b]/30 bg-[#64748b]/10';
     }
 
@@ -569,12 +570,39 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
   const handleIntelSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!intelQuery) return;
+    
+    setIntelValidationError('');
+    
+    if (intelType === 'CVE') {
+      const cveRegex = /^CVE-\d{4}-\d{4,7}$/i;
+      if (!cveRegex.test(intelQuery)) {
+        setIntelValidationError('Please enter a valid CVE format (e.g. CVE-2021-40438).');
+        return;
+      }
+    } else if (intelType === 'IP') {
+      const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^([a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}$/;
+      if (!ipRegex.test(intelQuery)) {
+        setIntelValidationError('Please enter a valid IP address.');
+        return;
+      }
+    } else if (intelType === 'Domain') {
+      const domainRegex = /^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+      if (!domainRegex.test(intelQuery)) {
+        setIntelValidationError('Please enter a valid domain name.');
+        return;
+      }
+    }
+
     setIntelLoading(true);
     try {
       const response = await axios.get(`/api/intel/lookup?query=${encodeURIComponent(intelQuery)}&type=${intelType}`);
       setIntelResult(response.data);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err.response && err.response.data && err.response.data.detail) {
+        setIntelValidationError(err.response.data.detail);
+      } else {
+        setIntelValidationError('Failed to fetch threat intel.');
+      }
     } finally {
       setIntelLoading(false);
     }
@@ -660,8 +688,8 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
           </div>
           <div className="p-3 space-y-2 text-xs">
             <div className="flex justify-between"><span className="text-[#475569]">Scan Type:</span> <span className="font-mono text-white">TCP Connect Scan</span></div>
-            <div className="flex justify-between"><span className="text-[#475569]">Port Range:</span> <span className="font-mono text-white">{scan.port_range || '1-1024'}</span></div>
-            <div className="flex justify-between"><span className="text-[#475569]">Threads Used:</span> <span className="font-mono text-white">{scan.threads || '8'}</span></div>
+            <div className="flex justify-between"><span className="text-[#475569]">Port Range:</span> <span className="font-mono text-white">{(scan as any).port_range || '1-1024'}</span></div>
+            <div className="flex justify-between"><span className="text-[#475569]">Threads Used:</span> <span className="font-mono text-white">{(scan as any).threads || '8'}</span></div>
             <div className="flex justify-between"><span className="text-[#475569]">Scan Started:</span> <span className="font-mono text-white">{parsed.startTimeFormatted}</span></div>
             <div className="flex justify-between"><span className="text-[#475569]">Scan Completed:</span> <span className="font-mono text-white">{parsed.endTimeFormatted}</span></div>
             <div className="flex justify-between"><span className="text-[#475569]">Total Duration:</span> <span className="font-mono text-[#3b82f6] font-bold">{parsed.durationFormatted}</span></div>
@@ -737,7 +765,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
                     <span className="font-mono text-xs font-bold text-[#ef4444] hover:underline cursor-pointer" onClick={() => {
                         setIntelQuery(cve.id);
                         setIntelType('CVE');
-                        setActiveTab('cve');
+                        setActiveTab('dashboard');
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}>{cve.id}</span>
                     <span className="px-1.5 py-0.5 rounded bg-[#ef4444]/10 border border-[#ef4444]/20 font-mono text-[9px] text-[#ef4444] font-bold">
@@ -827,7 +855,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
       )}
 
       {/* 4 Stats Cards in Row (Always visible in general header view or dashboard) */}
-      {(activeTab === 'dashboard' || activeTab === 'scan' || activeTab === 'history') && (
+      {(activeTab === 'dashboard' || activeTab === 'history') && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {renderStatCard(
             'Total Scans', 
@@ -924,6 +952,31 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
                     </select>
                   </div>
                 </div>
+
+                <div className="pt-2 border-t border-[#21293a] space-y-3">
+                  <span className="block text-[10px] font-semibold text-[#475569] uppercase tracking-wider">Advanced Profile Rules</span>
+                  
+                  <label className="flex items-center gap-2 text-xs text-[#94a3b8] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={pingDiscovery}
+                      onChange={(e) => setPingDiscovery(e.target.checked)}
+                      className="rounded bg-[#0d1117] border-[#21293a] text-[#3b82f6] focus:ring-0"
+                    />
+                    <span>Ping Host Discovery (ICMP Echo request) before scanning</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 text-xs text-[#94a3b8] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={aggressiveMode}
+                      onChange={(e) => setAggressiveMode(e.target.checked)}
+                      className="rounded bg-[#0d1117] border-[#21293a] text-[#3b82f6] focus:ring-0"
+                    />
+                    <span>Aggressive Version Detection (-sV -O OS fingerprinting)</span>
+                  </label>
+                </div>
+
                 <button
                   type="submit"
                   disabled={loading || (activeScan?.status === 'scanning')}
@@ -959,7 +1012,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. CVE-2023-45897"
+                      placeholder={intelType === 'CVE' ? 'e.g. CVE-2021-40438' : intelType === 'IP' ? 'e.g. 8.8.8.8 or 1.1.1.1' : 'e.g. google.com or example.org'}
                       value={intelQuery}
                       onChange={(e) => setIntelQuery(e.target.value)}
                       className="w-full bg-[#0d1117] border border-[#21293a] rounded px-3 py-2 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6] placeholder-[#475569] transition-all"
@@ -969,7 +1022,10 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
                     <label className="block text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Type</label>
                     <select
                       value={intelType}
-                      onChange={(e) => setIntelType(e.target.value)}
+                      onChange={(e) => {
+                        setIntelType(e.target.value);
+                        setIntelValidationError('');
+                      }}
                       className="w-full bg-[#0d1117] border border-[#21293a] rounded px-3 py-2 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6] transition-all"
                     >
                       <option value="CVE">CVE</option>
@@ -978,9 +1034,19 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
                     </select>
                   </div>
                 </div>
+                {intelValidationError && (
+                  <div className="text-[10px] text-[#ef4444] bg-[#ef4444]/10 border border-[#ef4444]/20 rounded p-2">
+                    {intelValidationError}
+                  </div>
+                )}
                 <div className="text-[10px] text-[#94a3b8] bg-[#0d1117] border border-[#21293a] rounded p-2 font-mono h-[34px] overflow-hidden flex items-center justify-between">
-                  <span>Target API endpoints: National Vulnerability DB (NVD)</span>
-                  <span className="text-[#3b82f6]">HTTPS proxy enabled</span>
+                  <span>
+                    Data Source:{' '}
+                    {intelType === 'CVE' && 'National Vulnerability Database (NVD)'}
+                    {intelType === 'IP' && 'AbuseIPDB + IPInfo'}
+                    {intelType === 'Domain' && 'WHOIS + DNS Lookup + VirusTotal'}
+                  </span>
+                  <span className="text-[#3b82f6]">Connection: Secure HTTPS</span>
                 </div>
                 <button
                   type="submit"
@@ -1185,100 +1251,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
         </>
       )}
 
-      {/* NEW SCAN TAB */}
-      {activeTab === 'scan' && (
-        <div className="max-w-2xl mx-auto bg-[#161b27] border border-[#21293a] rounded-lg p-6">
-          <div className="flex items-center gap-2 border-b border-[#21293a] pb-3 mb-5">
-            <Play className="text-[#3b82f6]" size={16} />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Configure Scanner Agent</h3>
-          </div>
-
-          <form onSubmit={handleScanSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Target IP / Domain Host</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 192.168.1.105"
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                  className="w-full bg-[#0d1117] border border-[#21293a] rounded px-3 py-2 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6] transition-all"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Scanning Range</label>
-                  <select
-                    value={portRange}
-                    onChange={(e) => setPortRange(e.target.value)}
-                    className="w-full bg-[#0d1117] border border-[#21293a] rounded px-3 py-2 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6] transition-all"
-                  >
-                    <option value="1-1024">Default Range (1 - 1024)</option>
-                    <option value="1-65535">Full Range (1 - 65535)</option>
-                    <option value="common">Common Ports (21,22,80,443,8080)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#475569] uppercase tracking-wider mb-1">Concurrency Threads</label>
-                  <select
-                    value={threads}
-                    onChange={(e) => setThreads(e.target.value)}
-                    className="w-full bg-[#0d1117] border border-[#21293a] rounded px-3 py-2 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6] transition-all"
-                  >
-                    <option value="4">4 Worker Threads</option>
-                    <option value="8">8 Worker Threads (Rec.)</option>
-                    <option value="16">16 Worker Threads</option>
-                    <option value="32">32 Worker Threads</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-[#21293a] space-y-3">
-                <span className="block text-[10px] font-semibold text-[#475569] uppercase tracking-wider">Advanced Profile Rules</span>
-                
-                <label className="flex items-center gap-2 text-xs text-[#94a3b8] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pingDiscovery}
-                    onChange={(e) => setPingDiscovery(e.target.checked)}
-                    className="rounded bg-[#0d1117] border-[#21293a] text-[#3b82f6] focus:ring-0"
-                  />
-                  <span>Ping Host Discovery (ICMP Echo request) before scanning</span>
-                </label>
-
-                <label className="flex items-center gap-2 text-xs text-[#94a3b8] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={aggressiveMode}
-                    onChange={(e) => setAggressiveMode(e.target.checked)}
-                    className="rounded bg-[#0d1117] border-[#21293a] text-[#3b82f6] focus:ring-0"
-                  />
-                  <span>Aggressive Version Detection (-sV -O OS fingerprinting)</span>
-                </label>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#d97706] hover:bg-[#d97706]/90 disabled:bg-[#21293a] text-white font-semibold py-2.5 rounded text-xs transition duration-150 flex items-center justify-center gap-1.5"
-            >
-              {loading ? (
-                <>
-                  <RotateCw size={12} className="animate-spin" /> Scanning in progress...
-                </>
-              ) : (
-                <>
-                  <Play size={12} /> Launch Scanner Job
-                </>
-              )}
-            </button>
-          </form>
-        </div>
-      )}
+      {/* SCAN TAB REMOVED (Migrated to Dashboard) */}
 
       {/* HISTORY LOGS TAB */}
       {activeTab === 'history' && (
@@ -1434,63 +1407,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
         </div>
       )}
 
-      {/* CVE LOOKUP TAB */}
-      {activeTab === 'cve' && (
-        <div className="space-y-6 max-w-4xl mx-auto">
-          <div className="bg-[#161b27] border border-[#21293a] rounded-lg p-5">
-            <div className="flex items-center gap-2 border-b border-[#21293a] pb-3 mb-4">
-              <ShieldAlert className="text-[#eab308]" size={16} />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Vulnerability Lookup Registry</h3>
-            </div>
-            
-            <form onSubmit={handleIntelSubmit} className="flex gap-3">
-              <input
-                type="text"
-                required
-                placeholder="e.g. CVE-2023-45897, IP address, or domain query..."
-                value={intelQuery}
-                onChange={(e) => setIntelQuery(e.target.value)}
-                className="flex-1 bg-[#0d1117] border border-[#21293a] rounded px-3 py-2 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6] placeholder-[#475569]"
-              />
-              <select
-                value={intelType}
-                onChange={(e) => setIntelType(e.target.value)}
-                className="bg-[#0d1117] border border-[#21293a] rounded px-3 py-2 text-xs text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6]"
-              >
-                <option value="CVE">CVE ID</option>
-                <option value="Domain">Domain</option>
-                <option value="IP">IP Address</option>
-              </select>
-              <button
-                type="submit"
-                disabled={intelLoading}
-                className="bg-[#d97706] hover:bg-[#d97706]/90 disabled:bg-[#21293a] text-white px-5 py-2 font-semibold rounded text-xs transition duration-150 flex items-center gap-1.5"
-              >
-                {intelLoading ? <RotateCw size={12} className="animate-spin" /> : <Search size={12} />}
-                Search
-              </button>
-            </form>
-          </div>
-
-          {/* Search Result */}
-          {intelResult ? (
-            <div className="bg-[#161b27] border border-[#21293a] rounded-lg p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-[#21293a] pb-2">
-                <span className="font-mono text-xs font-bold text-[#f1f5f9]">{intelResult.query} ({intelResult.intelligence_type})</span>
-                <span className="text-[10px] text-[#475569]">Record Created: {new Date(intelResult.created_at).toLocaleDateString()}</span>
-              </div>
-              <div className="bg-[#0d1117] border border-[#21293a] rounded p-4 font-mono text-[11px] text-[#94a3b8] whitespace-pre-line leading-relaxed">
-                {intelResult.summary}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-[#161b27] border border-[#21293a] rounded-lg p-10 text-center text-[#475569]">
-              <Search size={32} className="mx-auto mb-2 opacity-35" />
-              <p className="text-xs">Submit a vulnerability ID or Host parameters to generate intel records.</p>
-            </div>
-          )}
-        </div>
-      )}
+      {/* CVE LOOKUP TAB REMOVED (Migrated to Dashboard) */}
 
       {/* REPORTS TAB */}
       {activeTab === 'reports' && (
@@ -1696,7 +1613,7 @@ export default function Dashboard({ activeTab, setActiveTab }: DashboardProps) {
                 <button
                   onClick={() => {
                     setTarget(selectedMapNode);
-                    setActiveTab('scan');
+                    setActiveTab('dashboard');
                   }}
                   className="w-full mt-4 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white font-semibold py-1.5 rounded text-[11px] transition duration-150"
                 >

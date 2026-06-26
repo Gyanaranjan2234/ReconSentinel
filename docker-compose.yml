@@ -11,7 +11,7 @@ services:
       - ./backend:/app
       - backend_db:/app/data
     environment:
-      - DATABASE_URL=sqlite:///./data/netreconx.db
+      - DATABASE_URL=sqlite:///./data/reconsentinel.db
       - NVD_API_KEY=${NVD_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     restart: always

@@ -15,7 +15,10 @@ async def lookup_intel(query: str, type: str = "CVE", db: Session = Depends(get_
     if not query:
         raise HTTPException(status_code=400, detail="Query parameter is required")
 
-    summary, raw_response = await lookup_intel_summary(query, type)
+    try:
+        summary, raw_response = await lookup_intel_summary(query, type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     intel_record = models.ThreatIntel(
         query=query,

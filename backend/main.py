@@ -14,7 +14,7 @@ load_dotenv()
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(
-    title="NetReconX API",
+    title="ReconSentinel API",
     description="Cybersecurity Web Application Backend Services API",
     version="1.0.0",
     redirect_slashes=False,
@@ -36,4 +36,4 @@ app.include_router(reports_router.router, prefix="/api")
 
 @app.get("/")
 def read_root():
-    return {"app": "NetReconX Security Dashboard API", "status": "operational"}
+    return {"app": "ReconSentinel Security Dashboard API", "status": "operational"}
