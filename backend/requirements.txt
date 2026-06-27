@@ -1,7 +1,7 @@
 fastapi>=0.100.0
 uvicorn>=0.22.0
 python-nmap>=0.7.1
-sqlalchemy>=2.0.0
+
 aiofiles>=23.1.0
 python-multipart>=0.0.6
 icmplib>=3.0.0

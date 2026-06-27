@@ -183,12 +183,43 @@ def parse_nmap_scan(raw_scan: Dict[str, Any], target: str, port_range: str, scan
         host_status = host.get("status", {}).get("state", "unknown")
         host_name = host.get("hostnames", [{}])[0].get("name") if host.get("hostnames") else None
 
+        # --- OS Detection ---
+        os_detection = {
+            "detected": False,
+            "message": "OS fingerprint unavailable"
+        }
+        if host.get("osmatch") and len(host["osmatch"]) > 0:
+            best_match = host["osmatch"][0]
+            osclass_list = best_match.get("osclass", [])
+            
+            os_detection["detected"] = True
+            os_detection["os_name"] = best_match.get("name", "Unknown OS")
+            
+            try:
+                os_detection["accuracy"] = int(best_match.get("accuracy", 0))
+            except (ValueError, TypeError):
+                os_detection["accuracy"] = 0
+                
+            if osclass_list and len(osclass_list) > 0:
+                best_osclass = osclass_list[0]
+                os_detection["vendor"] = best_osclass.get("vendor", "Unknown")
+                os_detection["device_type"] = best_osclass.get("type", "Unknown")
+                cpes = best_osclass.get("cpe", [])
+                if cpes and len(cpes) > 0:
+                    os_detection["cpe"] = cpes[0]
+                else:
+                    os_detection["cpe"] = "N/A"
+            else:
+                os_detection["vendor"] = "Unknown"
+                os_detection["device_type"] = "Unknown"
+                os_detection["cpe"] = "N/A"
+
         host_entry: Dict[str, Any] = {
             "ip": host_ip,
             "status": host_status,
             "hostname": host_name,
             "latency": f"{host.get('times', {}).get('srtt', 0):.2f}ms" if host.get("times") else None,
-            "os": host.get("osmatch", [{}])[0].get("name") if host.get("osmatch") else None,
+            "os_detection": os_detection,
             "ports": [],
         }
 

@@ -37,3 +37,19 @@ class ThreatIntelResponse(BaseModel):
     summary: str
     raw_response: Dict[str, Any]
     created_at: datetime
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[ChatMessage] = []
+    context: Optional[Dict[str, Any]] = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    error: Optional[str] = None

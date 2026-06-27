@@ -70,7 +70,7 @@ export default function LandingPage() {
     { q: "Who should use ReconSentinel?", a: "It is built for security professionals, penetration testers, network administrators, and red/blue teams who require rapid, reliable insight into their network's security posture." },
     { q: "How does host discovery work?", a: "We utilize multi-layered ICMP echo requests and ARP resolution techniques to accurately and quickly map active hosts within a given subnet or IP range." },
     { q: "What is banner grabbing?", a: "Banner grabbing is the technique of connecting to open ports and reading the metadata broadcasted by the running service, which helps in identifying exact software versions and operating systems." },
-    { q: "What is vulnerability intelligence?", a: "It is the process of correlating the discovered service versions on your network against global vulnerability databases (like NVD) to identify known CVEs instantly." },
+    { q: "What is vulnerability intelligence?", a: "It is the process of correlating the discovered service versions on your network against global vulnerability repositories (like NVD) to identify known CVEs instantly." },
     { q: "How accurate is CVE detection?", a: "By using precise version strings and CPE (Common Platform Enumeration) matching, ReconSentinel minimizes false positives and delivers highly accurate vulnerability reports." },
     { q: "Does ReconSentinel perform exploitation?", a: "No. ReconSentinel strictly performs reconnaissance and vulnerability assessment. It does not actively exploit vulnerabilities, ensuring it remains safe for production environments." },
     { q: "Is authorization required before scanning?", a: "Yes. You must have explicit, written authorization to scan any network, IP address, or domain. Unauthorized scanning is illegal and violates our terms of service." },
@@ -129,7 +129,7 @@ export default function LandingPage() {
 
       {/* Sticky Navbar */}
       <nav className="fixed top-0 w-full z-50 bg-[#05080f]/80 backdrop-blur-md border-b border-[#21293a]">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="bg-[#3b82f6]/10 p-1.5 rounded border border-[#3b82f6]/30 text-[#3b82f6]">
               <Shield size={20} />
@@ -147,9 +147,9 @@ export default function LandingPage() {
           </div>
           <button 
             onClick={() => navigate('/recon-console')}
-            className="bg-[#3b82f6] hover:bg-[#2563eb] text-white h-[48px] px-6 rounded text-base font-semibold leading-tight tracking-normal transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center justify-center gap-2"
+            className="bg-[#3b82f6] hover:bg-[#2563eb] text-white h-[44px] md:h-[48px] px-4 md:px-6 rounded text-sm md:text-base font-semibold leading-tight tracking-normal transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center justify-center gap-1 md:gap-2 whitespace-nowrap flex-shrink-0"
           >
-            Launch Console <ArrowRight size={20} />
+            <span className="hidden sm:inline">Launch </span>Console <ArrowRight className="w-3.5 h-3.5 md:w-5 md:h-5" />
           </button>
         </div>
       </nav>
@@ -309,7 +309,7 @@ export default function LandingPage() {
             {[
               { f: "Port Scanning", a: true, b: true },
               { f: "OS Fingerprinting", a: true, b: true },
-              { f: "NVD Database Sync", a: false, b: true },
+              { f: "NVD Threat Intel Sync", a: false, b: true },
               { f: "Risk Scoring", a: false, b: true },
               { f: "AI Remediation", a: false, b: true },
               { f: "Executive Reports", a: false, b: true },
@@ -495,10 +495,10 @@ export default function LandingPage() {
               </div>
               <h3 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">Vulnerability <br/><span className="text-[#ef4444]">Intelligence</span></h3>
               <p className="text-[#94a3b8] mb-8 leading-relaxed text-lg">
-                Instantly map discovered services against the National Vulnerability Database (NVD). Our engine automatically correlates CPE matches to identify known flaws, score them using CVSS, and present prioritized remediation data.
+                Instantly map discovered services against the National Vulnerability Database (NVD) via real-time API. Our engine automatically correlates CPE matches to identify known flaws, score them using CVSS, and present prioritized remediation data.
               </p>
               <ul className="space-y-4">
-                {["Automated CVE Enrichment", "NVD Database Integration", "Accurate CVSS Risk Scoring", "Actionable Security Recommendations"].map((item, i) => (
+                {["Automated CVE Enrichment", "NVD Threat Intel Integration", "Accurate CVSS Risk Scoring", "Actionable Security Recommendations"].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-[#cbd5e1] font-bold">
                     <div className="bg-[#ef4444]/20 p-1 rounded-full"><CheckCircle2 className="text-[#ef4444]" size={16} /></div> {item}
                   </li>

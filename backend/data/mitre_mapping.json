@@ -1,0 +1,86 @@
+{
+  "21": {
+    "technique_id": "T1040",
+    "technique_name": "Network Sniffing",
+    "tactic": "Credential Access",
+    "description": "FTP transmits credentials and data in cleartext, susceptible to interception.",
+    "recommendation": "Upgrade to SFTP or FTPS to encrypt credentials and data in transit."
+  },
+  "22": {
+    "technique_id": "T1133",
+    "technique_name": "External Remote Services",
+    "tactic": "Initial Access",
+    "description": "Remote services may be abused for unauthorized access or brute force attacks.",
+    "recommendation": "Disable password authentication, enforce key-based auth, and use rate limiting."
+  },
+  "23": {
+    "technique_id": "T1040",
+    "technique_name": "Network Sniffing",
+    "tactic": "Credential Access",
+    "description": "Telnet is unencrypted and transmits everything in cleartext.",
+    "recommendation": "Disable Telnet entirely and replace with SSH."
+  },
+  "80": {
+    "technique_id": "T1190",
+    "technique_name": "Exploit Public-Facing Application",
+    "tactic": "Initial Access",
+    "description": "Attackers may exploit internet-facing web applications to gain access.",
+    "recommendation": "Deploy a WAF, monitor HTTP requests, and enforce HTTPS redirection."
+  },
+  "443": {
+    "technique_id": "T1190",
+    "technique_name": "Exploit Public-Facing Application",
+    "tactic": "Initial Access",
+    "description": "Attackers may exploit internet-facing web applications to gain access.",
+    "recommendation": "Ensure TLS configurations are strong and patch web applications regularly."
+  },
+  "445": {
+    "technique_id": "T1021.002",
+    "technique_name": "SMB/Windows Admin Shares",
+    "tactic": "Lateral Movement",
+    "description": "SMB shares may be used for lateral movement and remote code execution.",
+    "recommendation": "Block SMB at the network perimeter and disable SMBv1."
+  },
+  "3306": {
+    "technique_id": "T1190",
+    "technique_name": "Exploit Public-Facing Application",
+    "tactic": "Initial Access",
+    "description": "Publicly accessible databases are targets for brute forcing and exploitation.",
+    "recommendation": "Bind database listeners to localhost and disable remote root access."
+  },
+  "3389": {
+    "technique_id": "T1021.001",
+    "technique_name": "Remote Desktop Protocol",
+    "tactic": "Lateral Movement",
+    "description": "RDP can be abused for remote access or brute forced for initial entry.",
+    "recommendation": "Place RDP behind a VPN, enforce MFA, and implement account lockout policies."
+  },
+  "5432": {
+    "technique_id": "T1190",
+    "technique_name": "Exploit Public-Facing Application",
+    "tactic": "Initial Access",
+    "description": "Publicly accessible databases are targets for brute forcing and exploitation.",
+    "recommendation": "Bind database listeners to localhost and disable remote root access."
+  },
+  "5900": {
+    "technique_id": "T1219",
+    "technique_name": "Remote Access Software",
+    "tactic": "Command and Control",
+    "description": "VNC can be targeted to interactively access and control systems.",
+    "recommendation": "Tunnel VNC over SSH or VPN, and require strong authentication."
+  },
+  "6379": {
+    "technique_id": "T1190",
+    "technique_name": "Exploit Public-Facing Application",
+    "tactic": "Initial Access",
+    "description": "Unauthenticated Redis servers can be trivially exploited for RCE.",
+    "recommendation": "Bind to localhost and enable the 'requirepass' directive."
+  },
+  "27017": {
+    "technique_id": "T1190",
+    "technique_name": "Exploit Public-Facing Application",
+    "tactic": "Initial Access",
+    "description": "Unauthenticated MongoDB servers can expose sensitive organizational data.",
+    "recommendation": "Bind to localhost, enforce authentication, and disable public exposure."
+  }
+}

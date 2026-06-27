@@ -3,7 +3,7 @@
 ReconSentinel is an Intelligent Network Reconnaissance & Threat Intelligence Platform for authorized security assessment, network scanning demonstrations, and threat intelligence lookups.
 
 ## Features
-- **Recon Console:** Real network scanning powered by Nmap — TCP/UDP port discovery, version detection, and OS fingerprinting.
+- **Recon Console:** Real network scanning powered by Nmap — TCP/UDP port discovery, version detection, and OS fingerprinting (uses standard Nmap probing techniques with no persistent storage).
 - **Threat Intelligence Lookup:** Live lookups against NVD (CVE data) and VirusTotal (IP & domain reputation).
 - **Report Engine:** Generate professional PDF security assessment reports with CVE-to-MITRE ATT&CK mapping.
 - **Network Map:** Interactive host topology visualization of active scan targets.
@@ -110,7 +110,7 @@ ReconSentinel/
 3. Configure environment:
    ```bash
    cp .env.example .env
-   # Edit .env and add your NVD_API_KEY, VIRUSTOTAL_API_KEY, ANTHROPIC_API_KEY
+   # Edit .env and add your NVD_API_KEY, VIRUSTOTAL_API_KEY, GEMINI_API_KEY
    ```
 4. Start the development server:
    ```bash
@@ -139,7 +139,7 @@ ReconSentinel/
 |---------|---------|---------|
 | [NVD API](https://nvd.nist.gov/developers/request-an-api-key) | CVE threat intelligence lookups | Free |
 | [VirusTotal API](https://www.virustotal.com/gui/my-apikey) | IP & domain reputation checks | Free (public tier) |
-| [Anthropic API](https://console.anthropic.com/) | AI Security Assistant (Claude) | Paid |
+| [Google Gemini API](https://aistudio.google.com/) | AI Security Assistant | Free/Paid |
 
 ---
 

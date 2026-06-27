@@ -57,9 +57,10 @@ export default function TermsOfUse() {
                 ReconSentinel is designed strictly for defensive cybersecurity operations, vulnerability management, and authorized network reconnaissance.
               </p>
               <ul className="list-disc pl-6 space-y-2 text-[#94a3b8]">
-                <li>You must have explicit, written authorization to scan any target infrastructure.</li>
+                <li><strong>You must have explicit, written authorization to scan any target infrastructure.</strong> It is your sole responsibility to ensure you have obtained proper legal permissions before initiating any scans.</li>
                 <li>You shall not use the platform to conduct malicious attacks, denial-of-service, or unauthorized exploitation.</li>
                 <li>The platform must not be used in a manner that violates local, state, national, or international law.</li>
+                <li>ReconSentinel is a stateless platform. It does not provide user accounts, subscriptions, or persistent cloud storage. You are responsible for retaining your own exported reports locally.</li>
               </ul>
             </section>
 
@@ -68,7 +69,7 @@ export default function TermsOfUse() {
                 <Lock className="text-[#3b82f6]" size={20} /> 3. Data Privacy & Telemetry
               </h2>
               <p>
-                As a localized security tool, ReconSentinel processes network data primarily within your configured environment. However, when connecting to external Threat Intelligence APIs (e.g., NVD, WHOIS), you agree that non-sensitive metadata such as IP addresses or CVE identifiers may be queried against third-party endpoints.
+                As a localized, stateless security tool, ReconSentinel processes network data entirely in-memory and does not store or archive your scan history. When connecting to external Threat Intelligence APIs (e.g., NVD, VirusTotal, Gemini), you agree that non-sensitive metadata such as IP addresses or CVE identifiers may be queried against third-party endpoints.
               </p>
             </section>
 

@@ -7,6 +7,7 @@ export interface ScanResult {
   start_time?: string;
   end_time?: string;
   duration?: number;
+  mitre_mappings?: any[];
 }
 
 export interface ThreatIntel {

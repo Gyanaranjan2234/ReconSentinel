@@ -10,9 +10,10 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  Target
 } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { ScanResult } from '../types';
 import PageHeader from '../components/PageHeader';
 
@@ -34,6 +35,16 @@ interface EnrichedCVE {
   publishedDate: string;
   references: string[];
   mitreTechnique: string;
+}
+
+interface EnrichedOSDetection {
+  detected: boolean;
+  osName: string;
+  vendor: string;
+  deviceType: string;
+  accuracy: number;
+  cpe: string;
+  message?: string;
 }
 
 interface EnrichedScan {
@@ -59,46 +70,13 @@ interface EnrichedScan {
   highestCvss: number;
   executiveSummary: string;
   recommendations: string[];
+  mitreMappings: any[];
+  osDetection: EnrichedOSDetection | null;
 }
 
-const ScanLoadingUI = ({ target }: { target: string }) => {
-  const [progress, setProgress] = useState(0);
-  const [stage, setStage] = useState('Initializing Scan');
-
-  useEffect(() => {
-    const stages = [
-      { p: 0, text: 'Initializing Scan' },
-      { p: 10, text: 'Resolving Target' },
-      { p: 25, text: 'Host Discovery' },
-      { p: 50, text: 'Port Scanning' },
-      { p: 70, text: 'Service Detection' },
-      { p: 85, text: 'Banner Grabbing' },
-      { p: 95, text: 'Risk Analysis' }
-    ];
-
-    let currentStageIndex = 0;
-    
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (currentStageIndex < stages.length - 1 && prev >= stages[currentStageIndex + 1].p) {
-          currentStageIndex++;
-          setStage(stages[currentStageIndex].text);
-        }
-        
-        const currentTarget = stages[currentStageIndex + 1]?.p ?? 95;
-        if (prev < currentTarget) {
-          return prev + 1;
-        } else if (prev === currentTarget && currentStageIndex < stages.length - 1) {
-          currentStageIndex++;
-          setStage(stages[currentStageIndex].text);
-          return prev;
-        }
-        return prev;
-      });
-    }, 150);
-
-    return () => clearInterval(interval);
-  }, []);
+const ScanLoadingUI = ({ target, currentScan }: { target: string, currentScan: any }) => {
+  const progress = currentScan?.results?.progress || 0;
+  const stage = currentScan?.results?.stage ? currentScan.results.stage.replace('_', ' ').toUpperCase() : 'INITIALIZING SCAN';
 
   return (
     <div className="py-20 flex flex-col items-center justify-center min-h-[500px] w-full bg-[#161b27] rounded-xl border border-[#21293a]">
@@ -117,7 +95,7 @@ const ScanLoadingUI = ({ target }: { target: string }) => {
         
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm text-[#94a3b8] font-mono px-2">
-            <span>TARGET: {target}</span>
+            <span>Scanning target: <strong className="text-white">{target}</strong></span>
             <span className="text-[#3b82f6] text-lg font-bold">{progress}%</span>
           </div>
           
@@ -135,7 +113,8 @@ const ScanLoadingUI = ({ target }: { target: string }) => {
 
 export default function ReconConsole() {
   const { currentScan, loading, scanError, triggerScan } = useOutletContext<any>();
-  const [target, setTarget] = useState('');
+  const [searchParams] = useSearchParams();
+  const [target, setTarget] = useState(searchParams.get('target') || currentScan?.target || '');
   const [portRange, setPortRange] = useState('1-1024');
   const [threads, setThreads] = useState('8');
   const [activeScan, setActiveScan] = useState<ScanResult | null>(null);
@@ -150,6 +129,13 @@ export default function ReconConsole() {
       setValidationError(false);
     }
   }, [pingDiscovery, aggressiveMode]);
+
+  useEffect(() => {
+    const queryTarget = searchParams.get('target');
+    if (queryTarget) {
+      setTarget(queryTarget);
+    }
+  }, [searchParams]);
 
   const normalizeService = (portNum: number, rawService: string): string => {
     const PORT_SERVICE_MAP: Record<number, string> = {
@@ -198,9 +184,22 @@ export default function ReconConsole() {
 
     const ports: EnrichedPort[] = [];
     const scanCves: EnrichedCVE[] = [];
+    
+    let osDetection: EnrichedOSDetection | null = null;
 
     if (results.hosts && Array.isArray(results.hosts)) {
       results.hosts.forEach((host: any) => {
+        if (!osDetection && host.os_detection) {
+          osDetection = {
+            detected: host.os_detection.detected || false,
+            osName: host.os_detection.os_name || 'Unknown OS',
+            vendor: host.os_detection.vendor || 'Unknown Vendor',
+            deviceType: host.os_detection.device_type || 'Unknown Type',
+            accuracy: host.os_detection.accuracy || 0,
+            cpe: host.os_detection.cpe || 'N/A',
+            message: host.os_detection.message || 'OS fingerprint unavailable'
+          };
+        }
         if (host.ports && Array.isArray(host.ports)) {
           host.ports.forEach((p: any) => {
             const portNum = Number(p.port);
@@ -212,60 +211,30 @@ export default function ReconConsole() {
             let portRiskColor = '#22c55e';
             const portCves: string[] = [];
 
-            if (serviceName.includes('squid') || versionStr.includes('squid') || portNum === 8080) {
+            if (p.cves && Array.isArray(p.cves) && p.cves.length > 0) {
               portRisk = 'dangerous';
               portRiskText = 'Dangerous';
               portRiskColor = '#ef4444';
-              portCves.push('CVE-2023-45897');
-              if (!scanCves.some(c => c.id === 'CVE-2023-45897')) {
-                scanCves.push({
-                  id: 'CVE-2023-45897',
-                  cvss: 9.8,
-                  description: 'The Squid proxy RCE flaw allows remote attackers to execute arbitrary code via unverified HTTP requests.',
-                  publishedDate: '2023-10-15',
-                  references: [
-                    'https://nvd.nist.gov/vuln/detail/CVE-2023-45897',
-                    'https://github.com/squid-cache/squid/security/advisories'
-                  ],
-                  mitreTechnique: 'Exploit Public-Facing Application (T1190), Remote Access Software (T1219)'
-                });
-              }
-            } else if (serviceName.includes('apache') || versionStr.includes('apache') || portNum === 80) {
-              portRisk = 'medium';
-              portRiskText = 'Medium';
-              portRiskColor = '#eab308';
-              portCves.push('CVE-2021-40438');
-              if (!scanCves.some(c => c.id === 'CVE-2021-40438')) {
-                scanCves.push({
-                  id: 'CVE-2021-40438',
-                  cvss: 7.5,
-                  description: 'Apache HTTP Server mod_proxy SSRF vulnerability allows remote attackers to coerce the server into routing requests to arbitrary endpoints.',
-                  publishedDate: '2021-09-16',
-                  references: [
-                    'https://nvd.nist.gov/vuln/detail/CVE-2021-40438',
-                    'https://httpd.apache.org/security/vulnerabilities_24.html'
-                  ],
-                  mitreTechnique: 'Exploit Public-Facing Application (T1190)'
-                });
-              }
-            } else if (serviceName.includes('ssh') || versionStr.includes('ssh') || portNum === 22) {
-              portRisk = 'medium';
-              portRiskText = 'Medium';
-              portRiskColor = '#eab308';
-              portCves.push('CVE-2024-6387');
-              if (!scanCves.some(c => c.id === 'CVE-2024-6387')) {
-                scanCves.push({
-                  id: 'CVE-2024-6387',
-                  cvss: 8.1,
-                  description: 'A signal handler race condition vulnerability was found in OpenSSH\'s server (sshd), allowing unauthenticated remote code execution as root.',
-                  publishedDate: '2024-07-01',
-                  references: [
-                    'https://nvd.nist.gov/vuln/detail/CVE-2024-6387',
-                    'https://www.qualys.com/2024/07/01/regresshion/regresshion.txt'
-                  ],
-                  mitreTechnique: 'Exploit Public-Facing Application (T1190)'
-                });
-              }
+              p.cves.forEach((cve: any) => {
+                if (typeof cve === 'string') {
+                  portCves.push(cve);
+                  if (!scanCves.some(c => c.id === cve)) {
+                    scanCves.push({
+                      id: cve,
+                      cvss: 7.0, // Default severity if not provided by backend
+                      description: 'Vulnerability detected on port.',
+                      publishedDate: 'N/A',
+                      references: [],
+                      mitreTechnique: 'Unknown'
+                    });
+                  }
+                } else if (cve && cve.id) {
+                  portCves.push(cve.id);
+                  if (!scanCves.some(c => c.id === cve.id)) {
+                    scanCves.push(cve);
+                  }
+                }
+              });
             }
 
             ports.push({
@@ -408,6 +377,8 @@ export default function ReconConsole() {
       highestCvss,
       executiveSummary,
       recommendations,
+      mitreMappings: results.mitre_mappings || [],
+      osDetection,
     };
   };
 
@@ -515,6 +486,45 @@ export default function ReconConsole() {
         ))}
       </div>
 
+      <div className="space-y-4 pt-2">
+        <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
+          <Server size={20} className="text-[#3b82f6]" /> Operating System Fingerprint
+        </h5>
+        <div className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg">
+          {parsed.osDetection?.detected ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-[#21293a]">
+              <div className="p-4 md:p-6 text-center">
+                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">OS Name</div>
+                <div className="text-lg font-bold text-[#f1f5f9] font-mono">{parsed.osDetection.osName}</div>
+              </div>
+              <div className="p-4 md:p-6 text-center">
+                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Vendor</div>
+                <div className="text-lg font-bold text-[#f1f5f9] font-mono">{parsed.osDetection.vendor}</div>
+              </div>
+              <div className="p-4 md:p-6 text-center">
+                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Device Type</div>
+                <div className="text-lg font-bold text-[#f1f5f9] font-mono">{parsed.osDetection.deviceType}</div>
+              </div>
+              <div className="p-4 md:p-6 text-center">
+                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Accuracy</div>
+                <div className="text-lg font-bold text-[#3b82f6] font-mono">{parsed.osDetection.accuracy}%</div>
+              </div>
+              <div className="p-4 md:p-6 text-center overflow-hidden">
+                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">CPE</div>
+                <div className="text-sm font-bold text-[#f1f5f9] font-mono truncate" title={parsed.osDetection.cpe}>{parsed.osDetection.cpe}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 md:p-8 text-center text-base text-[#475569] font-mono">
+              <p>{parsed.osDetection?.message || 'OS fingerprint unavailable'}</p>
+              {!parsed.osDetection?.detected && (
+                <p className="mt-2 text-sm text-[#64748b]">Try enabling <strong className="text-[#94a3b8]">Aggressive Version Detection</strong>.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="space-y-4">
         <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
           <Network size={20} className="text-[#3b82f6]" /> Port & Handshake Details
@@ -549,36 +559,50 @@ export default function ReconConsole() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 text-left">
-        <div className="space-y-4">
-          <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
-            <ShieldAlert size={20} className="text-[#ef4444]" /> Vulnerability Intelligence
+      <div className="space-y-10 text-left">
+        <div className="space-y-6">
+          <h5 className="text-xl font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-3 font-mono flex items-center gap-3">
+            <ShieldAlert size={24} className="text-[#ef4444]" /> Vulnerability Intelligence
           </h5>
+          
           {parsed.cves.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {parsed.cves.map((cve) => (
-                <div key={cve.id} className="bg-[#161b27] border border-[#21293a] rounded-xl p-6 space-y-4 shadow-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-lg font-bold text-[#ef4444]">{cve.id}</span>
-                    <span className="px-3 py-1 rounded bg-[#ef4444]/10 border border-[#ef4444]/20 font-mono text-sm text-[#ef4444] font-bold">
-                      CVSS {cve.cvss}
-                    </span>
-                  </div>
-                  <p className="text-sm md:text-base text-[#94a3b8] leading-relaxed">
-                    {cve.description}
-                  </p>
-                  <div className="pt-4 border-t border-[#21293a] flex flex-col gap-2 text-sm font-mono">
-                    <div className="flex justify-between items-center text-[#64748b]">
-                      <span>Published: {cve.publishedDate}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#475569]">MITRE ATT&CK:</span>
-                      <span className="text-[#3b82f6] font-semibold text-right max-w-xs break-words leading-tight">{cve.mitreTechnique}</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-3">
+                <div key={cve.id} className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg">
+                  <div className="bg-[#0d1117] border-b border-[#21293a] p-4 md:p-5 flex items-center justify-between">
+                    <span className="font-mono text-xl font-bold text-[#ef4444]">{cve.id}</span>
+                    <div className="flex gap-2">
                       {cve.references.slice(0, 2).map((ref, idx) => (
-                        <a key={idx} href={ref} target="_blank" rel="noreferrer" className="text-[#3b82f6] hover:underline truncate max-w-xs">Ref {idx + 1}</a>
+                        <a key={idx} href={ref} target="_blank" rel="noreferrer" className="text-xs bg-[#1e293b] text-[#3b82f6] px-3 py-1.5 rounded hover:underline hover:bg-[#3b82f6]/10 transition-colors font-mono">Ref {idx + 1}</a>
                       ))}
+                    </div>
+                  </div>
+                  
+                  <div className="p-5 md:p-6 space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">CVSS Score</div>
+                        <div className="text-xl font-bold text-[#ef4444] font-mono">{cve.cvss}</div>
+                      </div>
+                      <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Severity</div>
+                        <div className="text-lg font-bold text-[#ef4444] font-mono uppercase tracking-widest">{cve.cvss >= 9 ? 'Critical' : cve.cvss >= 7 ? 'High' : 'Medium'}</div>
+                      </div>
+                      <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Published Date</div>
+                        <div className="text-sm font-bold text-[#e2e8f0] font-mono mt-1">{cve.publishedDate}</div>
+                      </div>
+                      <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">MITRE Mapped</div>
+                        <div className="text-xs font-bold text-[#3b82f6] font-mono mt-1 truncate px-1" title={cve.mitreTechnique}>{cve.mitreTechnique.split(' ')[0] || 'Unknown'}</div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h6 className="text-sm font-bold text-[#cbd5e1] uppercase tracking-wider mb-3 font-mono">Vulnerability Description</h6>
+                      <p className="text-sm md:text-base text-[#94a3b8] leading-relaxed bg-[#0d1117] border border-[#21293a] p-4 rounded-lg">
+                        {cve.description}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -591,7 +615,52 @@ export default function ReconConsole() {
           )}
         </div>
 
-        <div className="space-y-4">
+        {/* MITRE ATT&CK Mapping */}
+        <div className="space-y-4 pt-2">
+          <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
+            <Target size={20} className="text-[#a855f7]" /> MITRE ATT&CK MAPPING
+          </h5>
+          {parsed.mitreMappings && parsed.mitreMappings.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {parsed.mitreMappings.map((mitre, idx) => {
+                const isHigh = mitre.risk === 'High';
+                return (
+                  <div key={idx} className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg flex flex-col transition-all hover:border-[#a855f7]/50">
+                    <div className="p-4 bg-[#0d1117] border-b border-[#21293a] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-[#a855f7] bg-[#a855f7]/10 px-2 py-0.5 rounded border border-[#a855f7]/30">{mitre.id}</span>
+                        <span className="text-white font-bold text-sm tracking-wide uppercase truncate">{mitre.name}</span>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${isHigh ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/20' : 'bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20'}`}>
+                        {mitre.risk}
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-3 flex-1 flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-[#64748b] uppercase font-bold tracking-wider">Tactic:</span>
+                        <span className="text-sm text-[#e2e8f0] bg-[#1e293b] px-2 py-0.5 rounded font-mono">{mitre.tactic}</span>
+                      </div>
+                      <p className="text-sm text-[#94a3b8] leading-relaxed flex-1">
+                        {mitre.description}
+                      </p>
+                      <div className="pt-3 border-t border-[#21293a] mt-auto">
+                        <span className="text-xs text-[#22c55e] font-bold uppercase tracking-wider block mb-1">Recommendation</span>
+                        <p className="text-sm text-[#cbd5e1]">{mitre.recommendation}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-8 text-center text-base text-[#475569] font-mono shadow-lg">
+              No MITRE ATT&CK techniques were directly mapped to the discovered services.
+            </div>
+          )}
+        </div>
+
+        {/* Actionable Recommendations */}
+        <div className="space-y-4 pt-2">
           <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
             <CheckCircle2 size={20} className="text-[#22c55e]" /> Actionable Recommendations
           </h5>
@@ -665,7 +734,8 @@ export default function ReconConsole() {
                 placeholder="e.g. 192.168.1.105 or safehost.local"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
-                className="flex-1 bg-[#0d1117] border border-[#21293a] rounded-lg px-4 py-3 text-base text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6] placeholder-[#475569] transition-all"
+                disabled={loading || (activeScan?.status === 'scanning')}
+                className="flex-1 bg-[#0d1117] border border-[#21293a] rounded-lg px-4 py-3 text-base text-[#f1f5f9] focus:outline-none focus:border-[#3b82f6] placeholder-[#475569] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
@@ -749,7 +819,7 @@ export default function ReconConsole() {
             disabled={loading || (activeScan?.status === 'scanning')}
             className={`w-full text-white text-base font-semibold leading-tight tracking-normal h-[52px] px-8 rounded-lg transition duration-200 flex items-center justify-center gap-2 mt-4 ${
               loading || (activeScan?.status === 'scanning')
-                ? 'bg-[#21293a] text-[#475569]'
+                ? 'bg-[#21293a] text-[#475569] cursor-not-allowed'
                 : (!target.trim() || (!pingDiscovery && !aggressiveMode))
                   ? 'bg-[#3b82f6]/50 cursor-not-allowed text-white/70'
                   : 'bg-[#3b82f6] hover:bg-[#2563eb]'
@@ -757,7 +827,7 @@ export default function ReconConsole() {
           >
             {(loading || (activeScan?.status === 'scanning')) ? (
               <>
-                <RotateCw size={20} className="animate-spin" /> Scanning Active Target...
+                <RotateCw size={20} className="animate-spin" /> Scanning {target}...
               </>
             ) : (
               <>
@@ -817,7 +887,7 @@ export default function ReconConsole() {
 
           <div className="p-6 md:p-8">
             {activeScan.status === 'scanning' ? (
-              <ScanLoadingUI target={activeScan.target} />
+              <ScanLoadingUI target={activeScan.target} currentScan={activeScan} />
             ) : activeScan.status === 'completed' && enrichedActiveScan ? (
               <>
                 {!enrichedActiveScan.hostReachable && enrichedActiveScan.openPortsCount === 0 ? (

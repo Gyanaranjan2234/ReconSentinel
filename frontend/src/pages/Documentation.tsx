@@ -152,7 +152,7 @@ export default function Documentation() {
               <Shield className="text-[#3b82f6]" /> Overview
             </h2>
             <p className="text-[#cbd5e1] leading-relaxed">
-              ReconSentinel is an intelligent network reconnaissance and threat intelligence platform. It bridges the gap between raw structural network data (open ports, operating systems) and actionable threat mitigation by correlating findings with global vulnerability databases in real time.
+              ReconSentinel is an intelligent network reconnaissance and threat intelligence platform. It bridges the gap between raw structural network data (open ports, operating systems via standard Nmap probing) and actionable threat mitigation by correlating findings with global vulnerability databases in real time.
             </p>
             <p className="text-[#cbd5e1] leading-relaxed">
               The platform is built specifically for:
@@ -180,7 +180,7 @@ export default function Documentation() {
                 { title: 'Threat Intelligence', desc: 'IP, Domain, and URL reputation checks.', icon: Globe },
                 { title: 'Risk Scoring', desc: 'CVSS-based dynamic prioritization.', icon: AlertTriangle },
                 { title: 'PDF Report Generation', desc: 'Executive-ready compliance reports.', icon: FileText },
-                { title: 'Scan History', desc: 'Persistent local SQLite audit logs.', icon: Database },
+                { title: 'Stateless Architecture', desc: 'In-memory execution with no persistent data storage.', icon: Database },
                 { title: 'AI Security Assistant', desc: 'Contextual AI mitigation strategies.', icon: Bot }
               ].map((f, i) => (
                 <div key={i} className="bg-[#161b27] border border-[#21293a] p-5 rounded-lg hover:border-[#3b82f6]/50 transition-colors">
@@ -265,11 +265,11 @@ export default function Documentation() {
                   { title: 'Host Discovery', desc: 'ICMP/ARP sweeps to identify active nodes.' },
                   { title: 'Port Scan', desc: 'SYN scan identifies open TCP/UDP ports.' },
                   { title: 'Service Detection', desc: 'Determines running software and versions.' },
+                  { title: 'OS Fingerprinting', desc: 'Optional TCP/IP probing to identify host OS.' },
                   { title: 'Banner Grab', desc: 'Extracts deeper application metadata.' },
                   { title: 'Vulnerability Lookup', desc: 'Matches CPEs against the NVD.' },
                   { title: 'Risk Analysis', desc: 'Calculates CVSS base scores.' },
-                  { title: 'Generate Report', desc: 'Compiles data into a PDF.' },
-                  { title: 'Store Scan History', desc: 'Saves results to SQLite database.' }
+                  { title: 'Generate Report', desc: 'Compiles data into a PDF statelessly.' }
                 ].map((step, i) => (
                   <div key={i} className="relative pl-8">
                     <div className="absolute w-4 h-4 rounded-full bg-[#ef4444] border-4 border-[#161b27] -left-[9px] top-1"></div>

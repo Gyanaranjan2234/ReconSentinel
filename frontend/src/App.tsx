@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import DashboardLayout from './pages/DashboardLayout';
 import LandingPage from './pages/LandingPage';
 import TermsOfUse from './pages/TermsOfUse';
@@ -29,6 +30,7 @@ function App() {
         {/* Legacy redirect */}
         <Route path="/dashboard" element={<Navigate to="/recon-console" replace />} />
       </Routes>
+      <ScrollToTop />
     </Router>
   );
 }
