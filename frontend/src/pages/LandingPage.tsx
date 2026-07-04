@@ -834,8 +834,8 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-[#21293a] bg-[#05080f] pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            <div className="md:col-span-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-12">
+            <div className="lg:col-span-2">
               <div className="flex items-center gap-2 mb-4">
                 <div className="bg-[#3b82f6]/10 p-1.5 rounded border border-[#3b82f6]/30 text-[#3b82f6]">
                   <Shield size={18} />
@@ -844,15 +844,9 @@ export default function LandingPage() {
                   <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
                 </span>
               </div>
-              <p className="text-[#94a3b8] text-sm leading-relaxed mb-6">
+              <p className="text-[#94a3b8] text-sm leading-relaxed max-w-sm">
                 The ultimate platform for defensive network reconnaissance and automated threat intelligence aggregation.
               </p>
-              <div className="flex items-start gap-3 p-4 rounded border border-[#eab308]/20 bg-[#eab308]/5">
-                <Lock className="text-[#eab308] flex-shrink-0 mt-0.5" size={16} />
-                <p className="text-[10px] text-[#eab308] leading-relaxed font-mono">
-                  <strong>SECURITY NOTICE:</strong> ReconSentinel is intended exclusively for authorized security assessments and defensive cybersecurity operations.
-                </p>
-              </div>
             </div>
             
             <div>
@@ -886,15 +880,9 @@ export default function LandingPage() {
             </div>
           </div>
           
-          <div className="border-t border-[#21293a] pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-[#64748b]">&copy; {new Date().getFullYear()} ReconSentinel. All rights reserved.</p>
-              <p className="text-[10px] text-[#475569] flex items-center gap-1">Made with <Heart size={10} className="text-[#ef4444]" /> for Cybersecurity Professionals</p>
-            </div>
-            <div className="text-xs text-[#64748b] font-mono flex items-center gap-4">
-              <span>Status: <span className="text-[#22c55e]">Operational</span></span>
-              <span>Version: 1.2.0</span>
-            </div>
+          <div className="border-t border-[#21293a] pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+            <p className="text-xs text-[#64748b]">&copy; {new Date().getFullYear()} ReconSentinel. All rights reserved.</p>
+            <p className="text-xs text-[#475569]">Empowering Security Teams with Intelligent Reconnaissance and Risk Visibility.</p>
           </div>
         </div>
       </footer>
