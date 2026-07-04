@@ -41,9 +41,10 @@ def update_scan_record(
 
 
 def run_scan_job(scan_id: str, scan_data: dict) -> None:
-    print("SCAN STARTED", scan_id)
-    start_time = datetime.utcnow()
     try:
+        start_time = datetime.utcnow()
+        
+        # Immediately indicate that the job has started to unblock the frontend's 0% queued state
         progress = {
             "stage": "starting_scan",
             "progress": 5,
@@ -90,20 +91,24 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
 
         port_range = normalize_port_range(scan_data.get("port_range", "1-1024"))
         
-        # In a real scanner, we might want to split the nmap call into multiple steps 
-        # to properly emit progress at 75 and 90. Here we emit 75 before the scan completes.
-        progress.update({"stage": "service_detection", "progress": 75})
-        update_scan_record(scan_id, "running", progress)
+        aggressive = scan_data.get("aggressive_detection", False)
+        ping_disc = scan_data.get("ping_discovery", True)
         
-        progress.update({"stage": "os_fingerprinting", "progress": 90})
-        update_scan_record(scan_id, "running", progress)
+        print(f"Selected Scan Options:\nPing Discovery = {ping_disc}\nAggressive Detection = {aggressive}")
+
+        if aggressive:
+            progress.update({"stage": "service_detection", "progress": 75})
+            update_scan_record(scan_id, "running", progress)
+            
+            progress.update({"stage": "os_fingerprinting", "progress": 90})
+            update_scan_record(scan_id, "running", progress)
 
         scan_result = run_nmap_scan(
             scan_data["target"],
             port_range,
             scan_data.get("threads", 8),
             scan_data.get("ping_discovery", True),
-            scan_data.get("aggressive_mode", False),
+            scan_data.get("aggressive_detection", False),
         )
 
         end_time = datetime.utcnow()
@@ -116,12 +121,15 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         # Inject scan parameters and host metadata
         scan_result["port_range"] = port_range
         scan_result["threads"] = scan_data.get("threads", 8)
-        scan_result["aggressive_mode"] = scan_data.get("aggressive_mode", False)
+        scan_result["aggressive_detection"] = scan_data.get("aggressive_detection", False)
         scan_result["ping_discovery"] = scan_data.get("ping_discovery", True)
         scan_result["resolved_ip"] = resolved_ip
         scan_result["resolved_hostname"] = resolved_hostname
         scan_result["reverse_dns"] = reverse_dns
         
+        progress.update({"stage": "vulnerability_analysis", "progress": 95})
+        update_scan_record(scan_id, "running", progress)
+
         from reports.service import get_scan_cves
         from intel.risk import calculate_risk
         from intel.mitre import get_techniques
@@ -222,7 +230,8 @@ def get_scan_progress(scan_id: str):
             "scan_id": scan_id,
             "status": status_text,
             "stage": results.get("stage", "Initializing"),
-            "progress": results.get("progress", 0)
+            "progress": results.get("progress", 0),
+            "error": results.get("error", "Scan encountered an error.")
         }
 
 @router.get("/debug/keys")

@@ -11,7 +11,7 @@ export function useScan() {
     target: string;
     port_range: string;
     threads: number;
-    aggressive_mode: boolean;
+    aggressive_detection: boolean;
     ping_discovery: boolean;
   }): Promise<ScanResult | null> => {
     setLoading(true);
@@ -36,7 +36,15 @@ export function useScan() {
             if (progressData.progress > 0) {
               hasStarted = true;
             } else if (!hasStarted && (Date.now() - startTime > 10000)) {
-              console.warn(`Scan ${createdScan.id} has been queued for more than 10 seconds.`);
+              const errMsg = `Scan ${createdScan.id} timed out (stuck in QUEUED for more than 10 seconds).`;
+              console.error(errMsg);
+              setScanError('Scan initialization timed out. Please try again.');
+              setCurrentScan({
+                ...createdScan,
+                status: 'failed',
+                results: { stage: 'timeout', progress: 100 }
+              });
+              break;
             }
             
             if (progressData.status === 'completed') {

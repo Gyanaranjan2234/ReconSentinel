@@ -75,8 +75,42 @@ interface EnrichedScan {
 }
 
 const ScanLoadingUI = ({ target, currentScan }: { target: string, currentScan: any }) => {
-  const progress = currentScan?.results?.progress || 0;
+  const backendProgress = currentScan?.results?.progress || 0;
   const stage = currentScan?.results?.stage ? currentScan.results.stage.replace('_', ' ').toUpperCase() : 'INITIALIZING SCAN';
+
+  const [displayProgress, setDisplayProgress] = React.useState(0);
+
+  React.useEffect(() => {
+    if (backendProgress >= 100) {
+      setDisplayProgress(100);
+      return;
+    }
+    
+    // Jump to 1% immediately so it never feels stuck on 0
+    if (displayProgress === 0) {
+      setDisplayProgress(1);
+    }
+    
+    const interval = setInterval(() => {
+      setDisplayProgress(prev => {
+        // Fast catch up if backend is ahead
+        if (prev < backendProgress) {
+          return prev + Math.max(1, Math.floor((backendProgress - prev) / 4));
+        }
+        // Smooth creeping animation up to 99%
+        if (prev < 99) {
+          // Slow down the creeping as it gets higher
+          const chance = prev > 80 ? 0.2 : prev > 50 ? 0.5 : 0.8;
+          if (Math.random() < chance) {
+            return prev + 1;
+          }
+        }
+        return prev;
+      });
+    }, 400);
+
+    return () => clearInterval(interval);
+  }, [backendProgress]);
 
   return (
     <div className="py-20 flex flex-col items-center justify-center min-h-[500px] w-full bg-[#161b27] rounded-xl border border-[#21293a]">
@@ -96,13 +130,13 @@ const ScanLoadingUI = ({ target, currentScan }: { target: string, currentScan: a
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm text-[#94a3b8] font-mono px-2">
             <span>Scanning target: <strong className="text-white">{target}</strong></span>
-            <span className="text-[#3b82f6] text-lg font-bold">{progress}%</span>
+            <span className="text-[#3b82f6] text-lg font-bold">{displayProgress}%</span>
           </div>
           
           <div className="w-full bg-[#0b1220] rounded-full h-3 overflow-hidden border border-[#21293a] relative shadow-[0_0_15px_rgba(59,130,246,0.15)]">
             <div
               className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#3b82f6] via-[#6366f1] to-[#a855f7] transition-all duration-300 ease-out shadow-[0_0_10px_rgba(59,130,246,0.6)]"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${displayProgress}%` }}
             />
           </div>
         </div>
@@ -384,11 +418,9 @@ export default function ReconConsole() {
 
   useEffect(() => {
     if (currentScan) {
-      if (!activeScan || activeScan.id !== currentScan.id || activeScan.status !== currentScan.status) {
-        setActiveScan(currentScan);
-      }
+      setActiveScan(currentScan);
     }
-  }, [currentScan, activeScan]);
+  }, [currentScan]);
 
   const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -414,8 +446,8 @@ export default function ReconConsole() {
     const createdScan = await triggerScan({
       target,
       port_range: portRange,
-      threads: Number(threads),
-      aggressive_mode: aggressiveMode,
+      threads: parseInt(threads, 10) || 8,
+      aggressive_detection: aggressiveMode,
       ping_discovery: pingDiscovery,
     });
 

@@ -89,16 +89,14 @@ def normalize_threads(threads: int) -> int:
     return threads
 
 
-def build_nmap_arguments(port_range: str, threads: int, aggressive_mode: bool, ping_discovery: bool) -> str:
+def build_nmap_arguments(port_range: str, threads: int, aggressive_detection: bool, ping_discovery: bool) -> str:
     normalized_threads = normalize_threads(threads)
     parallelism = max(1, min(normalized_threads, 32))
     host_timeout = "600s" if port_range == "1-65535" else "120s"
     args = ["-T4", f"--min-parallelism {parallelism}", "--max-retries 1", f"--host-timeout {host_timeout}"]
 
-    if aggressive_mode:
+    if aggressive_detection:
         args.extend(["-sV", "-O", "--osscan-guess"])
-    else:
-        args.append("-sV")
 
     if not ping_discovery:
         args.append("-Pn")
@@ -282,9 +280,9 @@ def parse_nmap_scan(raw_scan: Dict[str, Any], target: str, port_range: str, scan
     return parsed
 
 
-def run_nmap_scan(target: str, port_range: str, threads: int, ping_discovery: bool, aggressive_mode: bool) -> Dict[str, Any]:
+def run_nmap_scan(target: str, port_range: str, threads: int, ping_discovery: bool, aggressive_detection: bool) -> Dict[str, Any]:
     scanner = nmap.PortScanner()
-    args = build_nmap_arguments(port_range, threads, aggressive_mode, ping_discovery)
+    args = build_nmap_arguments(port_range, threads, aggressive_detection, ping_discovery)
     start_time = time.time()
     raw_scan = scanner.scan(hosts=target, ports=port_range, arguments=args)
     duration = time.time() - start_time

@@ -8,7 +8,7 @@ class ScanCreate(BaseModel):
     target: str = Field(..., min_length=1)
     port_range: str = Field(default="1-1024")
     threads: int = Field(default=8, ge=1, le=64)
-    aggressive_mode: bool = Field(default=False)
+    aggressive_detection: bool = Field(default=False)
     ping_discovery: bool = Field(default=True)
 
     @validator("port_range")
