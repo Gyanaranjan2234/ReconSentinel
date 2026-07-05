@@ -96,7 +96,7 @@ def build_nmap_arguments(port_range: str, threads: int, aggressive_detection: bo
     args = ["-T4", f"--min-parallelism {parallelism}", "--max-retries 1", f"--host-timeout {host_timeout}"]
 
     if aggressive_detection:
-        args.extend(["-sV", "-O", "--osscan-guess"])
+        args.extend(["-sV"])
 
     if not ping_discovery:
         args.append("-Pn")
@@ -168,7 +168,7 @@ def generate_banner(port_num: int, service: str, version: str) -> str:
     return f"{service} {version_sig} handshake header signature"
 
 
-def parse_nmap_scan(raw_scan: Dict[str, Any], target: str, port_range: str, scan_duration: float) -> Dict[str, Any]:
+def parse_nmap_scan(raw_scan: Dict[str, Any], target: str, port_range: str, scan_duration: float, aggressive_detection: bool = False) -> Dict[str, Any]:
     parsed: Dict[str, Any] = {
         "target": target,
         "port_range": port_range,
@@ -186,7 +186,7 @@ def parse_nmap_scan(raw_scan: Dict[str, Any], target: str, port_range: str, scan
             "detected": False,
             "message": "OS fingerprint unavailable"
         }
-        if host.get("osmatch") and len(host["osmatch"]) > 0:
+        if aggressive_detection and host.get("osmatch") and len(host["osmatch"]) > 0:
             best_match = host["osmatch"][0]
             osclass_list = best_match.get("osclass", [])
             
@@ -286,4 +286,4 @@ def run_nmap_scan(target: str, port_range: str, threads: int, ping_discovery: bo
     start_time = time.time()
     raw_scan = scanner.scan(hosts=target, ports=port_range, arguments=args)
     duration = time.time() - start_time
-    return parse_nmap_scan(raw_scan, target, port_range, duration)
+    return parse_nmap_scan(raw_scan, target, port_range, duration, aggressive_detection)

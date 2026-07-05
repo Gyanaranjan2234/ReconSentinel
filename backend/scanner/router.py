@@ -76,11 +76,18 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         except Exception as exc:
             logging.warning(f"[SCAN {scan_id}] Host resolution failed: {exc}")
 
+        port_range = normalize_port_range(scan_data.get("port_range", "1-1024"))
+        aggressive = scan_data.get("aggressive_detection", False)
+        ping_disc = scan_data.get("ping_discovery", True)
+
         # Step: Ping Discovery
         try:
-            ping_summary = ping_target(target)
-            progress.update({"stage": "host_discovery", "progress": 20, "ping": ping_summary})
-            update_scan_record(scan_id, "running", progress)
+            if ping_disc:
+                ping_summary = ping_target(target)
+                progress.update({"stage": "host_discovery", "progress": 20, "ping": ping_summary})
+                update_scan_record(scan_id, "running", progress)
+            else:
+                ping_summary = None
         except Exception as exc:
             logging.error(f"[SCAN {scan_id}] Ping discovery failed: {exc}\n{traceback.format_exc()}")
             raise Exception(f"Ping discovery step failed: {exc}")
@@ -94,10 +101,6 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         progress.update({"stage": "port_scan", "progress": 50})
         update_scan_record(scan_id, "running", progress)
 
-        port_range = normalize_port_range(scan_data.get("port_range", "1-1024"))
-        aggressive = scan_data.get("aggressive_detection", False)
-        ping_disc = scan_data.get("ping_discovery", True)
-        
         print(f"Selected Scan Options:\nPing Discovery = {ping_disc}\nAggressive Detection = {aggressive}")
 
         if aggressive:
@@ -131,21 +134,33 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         scan_result["threads"] = scan_data.get("threads", 8)
         scan_result["aggressive_detection"] = aggressive
         scan_result["ping_discovery"] = ping_disc
+        
+        scan_type = "host_discovery" if (ping_disc and not aggressive) else "advanced"
+        scan_result["scan_type"] = scan_type
+        
         scan_result["resolved_ip"] = resolved_ip
         scan_result["resolved_hostname"] = resolved_hostname
         scan_result["reverse_dns"] = reverse_dns
         
-        # Step: Shodan Integration
-        shodan_key = os.getenv("SHODAN_API_KEY")
-        if shodan_key and resolved_ip and resolved_ip != "Unknown":
-            try:
-                from intel.shodan_os import get_shodan_host_os
-                shodan_info = get_shodan_host_os(resolved_ip)
-                if shodan_info:
-                    scan_result["shodan"] = shodan_info
-                    logging.info(f"[SCAN {scan_id}] Shodan lookup successful")
-            except Exception as exc:
-                logging.warning(f"[SCAN {scan_id}] Shodan integration failed, skipping gracefully: {exc}")
+        # Step: Shodan Integration (replaced by Nmap OS)
+        if aggressive:
+            from scanner.service import is_private_host
+            
+            if is_private_host(resolved_ip) or resolved_ip == "Unknown" or resolved_ip == "127.0.0.1" or resolved_ip == "localhost":
+                scan_result["shodan"] = {"status": "private_ip", "message": "OS intelligence is only available for public internet hosts."}
+                logging.info(f"[SCAN {scan_id}] OS Intelligence skipped for private/unknown IP: {resolved_ip}")
+            else:
+                try:
+                    from intel.shodan_os import get_shodan_host_os
+                    open_ports = scan_result.get("open_ports", [])
+                    shodan_response = get_shodan_host_os(resolved_ip, open_ports)
+                    scan_result["shodan"] = shodan_response
+                    logging.info(f"[SCAN {scan_id}] OS lookup completed with status: {shodan_response.get('status')}")
+                except Exception as exc:
+                    logging.warning(f"[SCAN {scan_id}] OS integration failed, skipping gracefully: {exc}")
+                    scan_result["shodan"] = {"status": "error", "message": "Unexpected error during OS lookup."}
+        else:
+            scan_result["shodan"] = {"status": "disabled", "message": "Aggressive detection not selected."}
 
         # Step: Vulnerability Analysis
         try:
@@ -162,11 +177,11 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
             scan_result["risk"] = calculate_risk(ports, cves)
             scan_result["mitre_mappings"] = get_techniques(ports)
         except Exception as exc:
-            logging.error(f"[SCAN {scan_id}] Vulnerability analysis failed: {exc}\n{traceback.format_exc()}")
-            # Proceeding without failing the whole scan if vuln analysis fails
-            scan_result["risk"] = {"score": 0.0, "level": "Unknown"}
+            logging.warning(f"[SCAN {scan_id}] Vulnerability analysis failed, continuing: {exc}")
+            scan_result["risk"] = {"score": 0.0, "level": "Not Assessed"}
             scan_result["mitre_mappings"] = []
-
+            
+        end_time = datetime.utcnow()
         update_scan_record(scan_id, "completed", scan_result, end_time=end_time, duration=duration_val)
         print("SCAN COMPLETED", scan_id)
         
@@ -315,7 +330,7 @@ def get_scan_progress(scan_id: str):
             "status": status_text,
             "stage": results.get("stage", "Initializing"),
             "progress": results.get("progress", 0),
-            "error": results.get("error", "Scan encountered an error.")
+            "error": results.get("error")
         }
 
 @router.get("/debug/keys")

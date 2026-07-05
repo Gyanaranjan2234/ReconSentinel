@@ -6,7 +6,7 @@ res = requests.post("http://localhost:8000/api/scan/", json={
     "target": "scanme.nmap.org",
     "port_range": "1-1024",
     "threads": 8,
-    "aggressive_mode": False,
+    "aggressive_detection": False,
     "ping_discovery": True
 })
 

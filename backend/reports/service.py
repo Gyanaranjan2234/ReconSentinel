@@ -1,5 +1,6 @@
 import os
 from typing import Any, List, Dict
+import logging
 from datetime import datetime
 
 from reportlab.lib import colors
@@ -40,10 +41,17 @@ def get_ports_scanned_count(port_range: str) -> int:
 
 def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     cves = []
+    logging.info(f"[VULN ENGINE] CVE Lookup Started: {len(ports)} ports")
+    
     for p in ports:
         service = p.get("service", "").lower()
+        product = p.get("product", service)
         version = p.get("version", "")
         version_lower = version.lower()
+
+        logging.info(f"[VULN ENGINE] Detected Service: {service}")
+        logging.info(f"[VULN ENGINE] Detected Product: {product}")
+        logging.info(f"[VULN ENGINE] Detected Version: {version}")
 
         if not version or version_lower == "unknown":
             continue
@@ -64,7 +72,9 @@ def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "published_date": "2023-10-15",
                     "references": "https://nvd.nist.gov/vuln/detail/CVE-2023-45897",
                     "mitre": "Exploit Public-Facing Application (T1190), Remote Access Software (T1219)",
-                    "confidence": confidence
+                    "confidence": confidence,
+                    "affectedService": "Squid Proxy",
+                    "remediation": "Update Squid to version 6.5 or apply vendor patches to mitigate the buffer overflow."
                 })
 
         if "apache" in service or "apache" in version_lower:
@@ -83,7 +93,9 @@ def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "published_date": "2021-09-16",
                     "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-40438",
                     "mitre": "Exploit Public-Facing Application (T1190)",
-                    "confidence": confidence
+                    "confidence": confidence,
+                    "affectedService": "Apache HTTP Server",
+                    "remediation": "Upgrade Apache HTTP Server to version 2.4.51 or later to resolve the SSRF vulnerability."
                 })
 
         if "ssh" in service or "ssh" in version_lower:
@@ -102,8 +114,76 @@ def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "published_date": "2024-07-01",
                     "references": "https://nvd.nist.gov/vuln/detail/CVE-2024-6387",
                     "mitre": "Exploit Public-Facing Application (T1190)",
-                    "confidence": confidence
+                    "confidence": confidence,
+                    "affectedService": "OpenSSH sshd",
+                    "remediation": "Apply the latest OpenSSH updates (e.g., 9.8p1) or set LoginGraceTime to 0 in sshd_config as a mitigation."
                 })
+                
+        if "nginx" in service or "nginx" in version_lower:
+            confidence = "High" if "1.18" in version_lower else "Low"
+            if not any(c["id"] == "CVE-2021-23017" for c in cves):
+                cves.append({
+                    "id": "CVE-2021-23017",
+                    "cvss": 7.5,
+                    "severity": "High",
+                    "description": "A security issue in nginx resolver was identified, which might allow an unauthenticated remote attacker to cause 1-byte memory overwrite.",
+                    "published_date": "2021-05-25",
+                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-23017",
+                    "mitre": "Exploit Public-Facing Application (T1190)",
+                    "confidence": confidence,
+                    "affectedService": "Nginx",
+                    "remediation": "Update Nginx to 1.20.1 or 1.21.0 to fix the memory overwrite vulnerability."
+                })
+
+        if "mysql" in service or "mysql" in version_lower:
+            confidence = "High" if "5.7" in version_lower else "Low"
+            if not any(c["id"] == "CVE-2021-2144" for c in cves):
+                cves.append({
+                    "id": "CVE-2021-2144",
+                    "cvss": 4.9,
+                    "severity": "Medium",
+                    "description": "Vulnerability in the MySQL Server product of Oracle MySQL.",
+                    "published_date": "2021-04-22",
+                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-2144",
+                    "mitre": "Exploit Public-Facing Application (T1190)",
+                    "confidence": confidence,
+                    "affectedService": "MySQL Server",
+                    "remediation": "Apply the corresponding Oracle Critical Patch Update for MySQL."
+                })
+
+        if "postgres" in service or "postgres" in version_lower:
+            confidence = "High" if "13.0" in version_lower else "Low"
+            if not any(c["id"] == "CVE-2021-32027" for c in cves):
+                cves.append({
+                    "id": "CVE-2021-32027",
+                    "cvss": 8.8,
+                    "severity": "High",
+                    "description": "A flaw was found in PostgreSQL. An attacker could modify arbitrary bytes in server memory.",
+                    "published_date": "2021-05-13",
+                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-32027",
+                    "mitre": "Exploit Public-Facing Application (T1190)",
+                    "confidence": confidence,
+                    "affectedService": "PostgreSQL",
+                    "remediation": "Update PostgreSQL to versions 13.3, 12.7, 11.12, or later."
+                })
+
+        if "ftp" in service or "ftp" in version_lower:
+            confidence = "High" if "proftpd" in version_lower else "Low"
+            if not any(c["id"] == "CVE-2015-3306" for c in cves):
+                cves.append({
+                    "id": "CVE-2015-3306",
+                    "cvss": 9.8,
+                    "severity": "Critical",
+                    "description": "ProFTPD mod_copy allows remote attackers to read and write to arbitrary files.",
+                    "published_date": "2015-05-18",
+                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2015-3306",
+                    "mitre": "Exploit Public-Facing Application (T1190)",
+                    "confidence": confidence,
+                    "affectedService": "ProFTPD",
+                    "remediation": "Upgrade ProFTPD to 1.3.5a or restrict mod_copy module."
+                })
+
+    logging.info(f"[VULN ENGINE] CVE Results Returned: {len(cves)}")
     return cves
 
 

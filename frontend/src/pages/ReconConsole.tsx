@@ -37,14 +37,16 @@ interface EnrichedCVE {
   mitreTechnique: string;
 }
 
-interface EnrichedOSDetection {
-  detected: boolean;
-  osName: string;
-  vendor: string;
-  deviceType: string;
-  accuracy: number;
-  cpe: string;
+interface EnrichedShodanData {
+  status: string;
   message?: string;
+  data?: {
+    os: string;
+    org: string;
+    isp: string;
+    hostnames: string[];
+    ports: number[];
+  };
 }
 
 interface EnrichedScan {
@@ -71,7 +73,8 @@ interface EnrichedScan {
   executiveSummary: string;
   recommendations: string[];
   mitreMappings: any[];
-  osDetection: EnrichedOSDetection | null;
+  shodanData: EnrichedShodanData | null;
+  aggressiveDetection: boolean;
 }
 
 const ScanLoadingUI = ({ target, currentScan }: { target: string, currentScan: any }) => {
@@ -219,21 +222,12 @@ export default function ReconConsole() {
     const ports: EnrichedPort[] = [];
     const scanCves: EnrichedCVE[] = [];
     
-    let osDetection: EnrichedOSDetection | null = null;
+    let shodanData: EnrichedShodanData | null = results.shodan || null;
+    let aggressiveDetection = results.aggressive_detection || false;
+    let scanType = results.scan_type || (results.ping && !aggressiveDetection ? 'host_discovery' : 'advanced');
 
     if (results.hosts && Array.isArray(results.hosts)) {
       results.hosts.forEach((host: any) => {
-        if (!osDetection && host.os_detection) {
-          osDetection = {
-            detected: host.os_detection.detected || false,
-            osName: host.os_detection.os_name || 'Unknown OS',
-            vendor: host.os_detection.vendor || 'Unknown Vendor',
-            deviceType: host.os_detection.device_type || 'Unknown Type',
-            accuracy: host.os_detection.accuracy || 0,
-            cpe: host.os_detection.cpe || 'N/A',
-            message: host.os_detection.message || 'OS fingerprint unavailable'
-          };
-        }
         if (host.ports && Array.isArray(host.ports)) {
           host.ports.forEach((p: any) => {
             const portNum = Number(p.port);
@@ -412,7 +406,9 @@ export default function ReconConsole() {
       executiveSummary,
       recommendations,
       mitreMappings: results.mitre_mappings || [],
-      osDetection,
+      shodanData,
+      aggressiveDetection,
+      scanType,
     };
   };
 
@@ -518,216 +514,330 @@ export default function ReconConsole() {
         ))}
       </div>
 
-      <div className="space-y-4 pt-2">
-        <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
-          <Server size={20} className="text-[#3b82f6]" /> Operating System Fingerprint
-        </h5>
-        <div className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg">
-          {parsed.osDetection?.detected ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-[#21293a]">
-              <div className="p-4 md:p-6 text-center">
-                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">OS Name</div>
-                <div className="text-lg font-bold text-[#f1f5f9] font-mono">{parsed.osDetection.osName}</div>
-              </div>
-              <div className="p-4 md:p-6 text-center">
-                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Vendor</div>
-                <div className="text-lg font-bold text-[#f1f5f9] font-mono">{parsed.osDetection.vendor}</div>
-              </div>
-              <div className="p-4 md:p-6 text-center">
-                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Device Type</div>
-                <div className="text-lg font-bold text-[#f1f5f9] font-mono">{parsed.osDetection.deviceType}</div>
-              </div>
-              <div className="p-4 md:p-6 text-center">
-                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Accuracy</div>
-                <div className="text-lg font-bold text-[#3b82f6] font-mono">{parsed.osDetection.accuracy}%</div>
-              </div>
-              <div className="p-4 md:p-6 text-center overflow-hidden">
-                <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">CPE</div>
-                <div className="text-sm font-bold text-[#f1f5f9] font-mono truncate" title={parsed.osDetection.cpe}>{parsed.osDetection.cpe}</div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 md:p-8 text-center text-base text-[#475569] font-mono">
-              <p>{parsed.osDetection?.message || 'OS fingerprint unavailable'}</p>
-              {!parsed.osDetection?.detected && (
-                <p className="mt-2 text-sm text-[#64748b]">Try enabling <strong className="text-[#94a3b8]">Aggressive Version Detection</strong>.</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
-          <Network size={20} className="text-[#3b82f6]" /> Port & Handshake Details
-        </h5>
-        {parsed.ports.length > 0 ? (
-          <div className="overflow-x-auto border border-[#21293a] rounded-xl shadow-lg">
-            <table className="w-full text-left text-sm md:text-base border-collapse">
-              <thead>
-                <tr className="bg-[#0d1117] border-b border-[#21293a] text-[#475569] uppercase font-bold tracking-[0.08em] text-xs md:text-sm">
-                  <th className="py-4 px-6">Port</th>
-                  <th className="py-4 px-6">Service</th>
-                  <th className="py-4 px-6">Version</th>
-                  <th className="py-4 px-6">Banner Response</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#21293a] font-mono">
-                {parsed.ports.map((port, idx) => (
-                  <tr key={idx} className="hover:bg-[#21293a]/10">
-                    <td className="py-4 px-6 font-semibold text-white">{port.port}</td>
-                    <td className="py-4 px-6 text-[#cbd5e1]">{port.service}</td>
-                    <td className="py-4 px-6">{port.version}</td>
-                    <td className="py-4 px-6 text-[#64748b] text-sm break-all max-w-sm">{port.banner}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-8 text-center text-base text-[#475569] font-mono shadow-lg">
-            No open ports were detected on the target.
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-10 text-left">
-        <div className="space-y-6">
-          <h5 className="text-xl font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-3 font-mono flex items-center gap-3">
-            <ShieldAlert size={24} className="text-[#ef4444]" /> Vulnerability Intelligence
+      {parsed.aggressiveDetection && parsed.scanType !== 'host_discovery' && (
+        <div className="space-y-4 pt-2">
+          <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
+            <Server size={20} className="text-[#3b82f6]" /> Operating System Fingerprint
           </h5>
-          
-          {parsed.cves.length > 0 ? (
-            <div className="space-y-6">
-              {parsed.cves.map((cve) => (
-                <div key={cve.id} className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg">
-                  <div className="bg-[#0d1117] border-b border-[#21293a] p-4 md:p-5 flex items-center justify-between">
-                    <span className="font-mono text-xl font-bold text-[#ef4444]">{cve.id}</span>
-                    <div className="flex gap-2">
-                      {cve.references.slice(0, 2).map((ref, idx) => (
-                        <a key={idx} href={ref} target="_blank" rel="noreferrer" className="text-xs bg-[#1e293b] text-[#3b82f6] px-3 py-1.5 rounded hover:underline hover:bg-[#3b82f6]/10 transition-colors font-mono">Ref {idx + 1}</a>
-                      ))}
-                    </div>
+          <div className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg relative">
+            {parsed.shodanData?.data?.is_admin === false && (
+              <div className="bg-[#ef4444]/10 border-b border-[#ef4444]/20 p-3 flex items-start gap-3">
+                <AlertTriangle size={18} className="text-[#ef4444] mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-[#f87171] font-mono leading-relaxed">
+                  <strong>Warning:</strong> OS fingerprinting requires elevated privileges for accurate detection.
+                </p>
+              </div>
+            )}
+            
+            {parsed.shodanData?.status === 'success' && parsed.shodanData.data ? (
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#21293a]">
+                  <span className="text-[#94a3b8] font-bold text-sm uppercase tracking-wider">Status:</span>
+                  <span className={`text-xs font-bold px-3 py-1 rounded uppercase tracking-wider ${
+                    parsed.shodanData.data.accuracy_num >= 90 ? 'bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20' : 
+                    (parsed.shodanData.data.accuracy_num >= 50 || parsed.shodanData.data.accuracy_num === 0) ? 'bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20' : 
+                    'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/20'
+                  }`}>
+                    {parsed.shodanData.data.accuracy_num >= 90 ? 'Success' : 
+                     (parsed.shodanData.data.accuracy_num >= 50 || parsed.shodanData.data.accuracy_num === 0) ? 'Partial Detection' : 'Detection Failed'}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    {parsed.shodanData.data.os && (
+                      <div>
+                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">OS Name</div>
+                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.shodanData.data.os}</div>
+                      </div>
+                    )}
+                    {parsed.shodanData.data.os_family && (
+                      <div>
+                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">OS Family</div>
+                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.shodanData.data.os_family}</div>
+                      </div>
+                    )}
+                    {parsed.shodanData.data.vendor && (
+                      <div>
+                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Vendor</div>
+                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.shodanData.data.vendor}</div>
+                      </div>
+                    )}
+                    {parsed.shodanData.data.device_type && (
+                      <div>
+                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Device Type</div>
+                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.shodanData.data.device_type}</div>
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="p-5 md:p-6 space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
-                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">CVSS Score</div>
-                        <div className="text-xl font-bold text-[#ef4444] font-mono">{cve.cvss}</div>
-                      </div>
-                      <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
-                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Severity</div>
-                        <div className="text-lg font-bold text-[#ef4444] font-mono uppercase tracking-widest">{cve.cvss >= 9 ? 'Critical' : cve.cvss >= 7 ? 'High' : 'Medium'}</div>
-                      </div>
-                      <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
-                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Published Date</div>
-                        <div className="text-sm font-bold text-[#e2e8f0] font-mono mt-1">{cve.publishedDate}</div>
-                      </div>
-                      <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
-                        <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">MITRE Mapped</div>
-                        <div className="text-xs font-bold text-[#3b82f6] font-mono mt-1 truncate px-1" title={cve.mitreTechnique}>{cve.mitreTechnique.split(' ')[0] || 'Unknown'}</div>
-                      </div>
-                    </div>
-
+                  <div className="space-y-4 bg-[#0d1117] p-4 rounded-lg border border-[#21293a]">
                     <div>
-                      <h6 className="text-sm font-bold text-[#cbd5e1] uppercase tracking-wider mb-3 font-mono">Vulnerability Description</h6>
-                      <p className="text-sm md:text-base text-[#94a3b8] leading-relaxed bg-[#0d1117] border border-[#21293a] p-4 rounded-lg">
-                        {cve.description}
-                      </p>
+                      <div className="text-xs text-[#64748b] uppercase tracking-wider mb-2 font-bold flex justify-between">
+                        <span>Accuracy</span>
+                        <span className={parsed.shodanData.data.accuracy_num >= 90 ? 'text-[#22c55e]' : (parsed.shodanData.data.accuracy_num >= 50 || parsed.shodanData.data.accuracy_num === 0) ? 'text-[#eab308]' : 'text-[#ef4444]'}>{parsed.shodanData.data.accuracy}</span>
+                      </div>
+                      <div className="w-full bg-[#1e293b] rounded-full h-2.5 mb-1 overflow-hidden flex">
+                        <div className={`h-2.5 rounded-full ${parsed.shodanData.data.accuracy_num >= 90 ? 'bg-[#22c55e]' : (parsed.shodanData.data.accuracy_num >= 50 || parsed.shodanData.data.accuracy_num === 0) ? 'bg-[#eab308]' : 'bg-[#ef4444]'}`} style={{ width: parsed.shodanData.data.accuracy_num === 0 ? '100%' : `${parsed.shodanData.data.accuracy_num}%`, opacity: parsed.shodanData.data.accuracy_num === 0 ? 0.3 : 1 }}></div>
+                      </div>
+                      {(parsed.shodanData.data.accuracy_num > 0 && parsed.shodanData.data.accuracy_num < 50) && (
+                        <div className="text-xs text-[#ef4444] mt-2 font-mono">Low confidence result.</div>
+                      )}
+                      {parsed.shodanData.data.accuracy_num === 0 && (
+                        <div className="text-xs text-[#eab308] mt-2 font-mono">Partial matching via available data.</div>
+                      )}
                     </div>
+                    
+                    {(parsed.shodanData.data.uptime || parsed.shodanData.data.cpe) && (
+                      <div className="pt-4 mt-4 border-t border-[#21293a]">
+                        <div className="text-xs text-[#94a3b8] uppercase tracking-wider mb-3 font-bold">Additional Information</div>
+                        <ul className="space-y-2 text-sm font-mono text-[#cbd5e1]">
+                          {parsed.shodanData.data.uptime && (
+                            <li className="flex items-start gap-2">
+                              <span className="text-[#3b82f6]">-</span>
+                              <span><span className="text-[#94a3b8]">Uptime Guess:</span> {parsed.shodanData.data.uptime}</span>
+                            </li>
+                          )}
+                          {parsed.shodanData.data.cpe && (
+                            <li className="flex items-start gap-2">
+                              <span className="text-[#3b82f6]">-</span>
+                              <span className="break-all"><span className="text-[#94a3b8]">CPE:</span> {parsed.shodanData.data.cpe}</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-8 text-center text-base text-[#475569] font-mono shadow-lg">
-              No vulnerabilities (CVEs) or active threat intelligence signatures mapped.
-            </div>
-          )}
-        </div>
-
-        {/* MITRE ATT&CK Mapping */}
-        <div className="space-y-4 pt-2">
-          <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
-            <Target size={20} className="text-[#a855f7]" /> MITRE ATT&CK MAPPING
-          </h5>
-          {parsed.mitreMappings && parsed.mitreMappings.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {parsed.mitreMappings.map((mitre, idx) => {
-                const isHigh = mitre.risk === 'High';
-                return (
-                  <div key={idx} className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg flex flex-col transition-all hover:border-[#a855f7]/50">
-                    <div className="p-4 bg-[#0d1117] border-b border-[#21293a] flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[#a855f7] bg-[#a855f7]/10 px-2 py-0.5 rounded border border-[#a855f7]/30">{mitre.id}</span>
-                        <span className="text-white font-bold text-sm tracking-wide uppercase truncate">{mitre.name}</span>
-                      </div>
-                      <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${isHigh ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/20' : 'bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20'}`}>
-                        {mitre.risk}
-                      </span>
-                    </div>
-                    <div className="p-4 space-y-3 flex-1 flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-[#64748b] uppercase font-bold tracking-wider">Tactic:</span>
-                        <span className="text-sm text-[#e2e8f0] bg-[#1e293b] px-2 py-0.5 rounded font-mono">{mitre.tactic}</span>
-                      </div>
-                      <p className="text-sm text-[#94a3b8] leading-relaxed flex-1">
-                        {mitre.description}
-                      </p>
-                      <div className="pt-3 border-t border-[#21293a] mt-auto">
-                        <span className="text-xs text-[#22c55e] font-bold uppercase tracking-wider block mb-1">Recommendation</span>
-                        <p className="text-sm text-[#cbd5e1]">{mitre.recommendation}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-8 text-center text-base text-[#475569] font-mono shadow-lg">
-              No MITRE ATT&CK techniques were directly mapped to the discovered services.
-            </div>
-          )}
-        </div>
-
-        {/* Actionable Recommendations */}
-        <div className="space-y-4 pt-2">
-          <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
-            <CheckCircle2 size={20} className="text-[#22c55e]" /> Actionable Recommendations
-          </h5>
-          <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-6 md:p-8 shadow-lg">
-            {parsed.recommendations.length > 0 ? (
-              <ul className="list-none space-y-6">
-                {parsed.recommendations.map((rec, i) => {
-                  const parts = rec.split(':');
-                  const isTitle = parts.length > 1 && !rec.startsWith('Enforce') && !rec.startsWith('Regular');
-                  return (
-                    <li key={i} className="flex items-start gap-3 text-sm md:text-base text-[#cbd5e1]">
-                      <div className="mt-1 text-[#3b82f6]">
-                        <ArrowRight size={16} />
-                      </div>
-                      <div>
-                        {isTitle ? (
-                          <>
-                            <strong className="text-white block mb-1 text-base">{parts[0]}:</strong>
-                            <span className="text-[#94a3b8] leading-relaxed">{parts.slice(1).join(':')}</span>
-                          </>
-                        ) : (
-                          <span className="text-[#94a3b8] leading-relaxed">{rec}</span>
-                        )}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
+              </div>
             ) : (
-              <div className="text-center text-base text-[#475569] font-mono">
-                No immediate actionable recommendations.
+              <div className="p-6 md:p-8">
+                <div className="text-center mb-6">
+                  <p className="text-base text-[#ef4444] font-mono font-bold uppercase tracking-widest">Detection Failed</p>
+                  <p className="text-[#94a3b8] mt-2">OS fingerprint data could not be determined.</p>
+                </div>
+                <div className="bg-[#0d1117] rounded-lg p-5 border border-[#21293a]">
+                  <h6 className="text-[#f1f5f9] font-bold uppercase tracking-wider text-sm mb-3">Possible Reasons:</h6>
+                  <ul className="space-y-2 text-sm font-mono text-[#cbd5e1]">
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#3b82f6]">•</span> Target blocks OS fingerprint probes
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#3b82f6]">•</span> Not enough open/closed ports detected
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#3b82f6]">•</span> Firewall filtering
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#3b82f6]">•</span> Target does not respond to TCP fingerprinting
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#3b82f6]">•</span> Elevated privileges required
+                    </li>
+                  </ul>
+                </div>
               </div>
             )}
           </div>
         </div>
+      )}
+
+      {/* Port Details are shown unconditionally as requested by user */}
+      {true && (
+        <div className="space-y-4">
+          <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
+            <Network size={20} className="text-[#3b82f6]" /> Port & Handshake Details
+          </h5>
+          {parsed.ports.length > 0 ? (
+            <div className="overflow-x-auto border border-[#21293a] rounded-xl shadow-lg">
+              <table className="w-full text-left text-sm md:text-base border-collapse">
+                <thead>
+                  <tr className="bg-[#0d1117] border-b border-[#21293a] text-[#475569] uppercase font-bold tracking-[0.08em] text-xs md:text-sm">
+                    <th className="py-4 px-6">Port</th>
+                    <th className="py-4 px-6">Service</th>
+                    <th className="py-4 px-6">Version</th>
+                    <th className="py-4 px-6">Banner Response</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#21293a] font-mono">
+                  {parsed.ports.map((port, idx) => (
+                    <tr key={idx} className="hover:bg-[#21293a]/10">
+                      <td className="py-4 px-6 font-semibold text-white">{port.port}</td>
+                      <td className="py-4 px-6 text-[#cbd5e1]">{port.service}</td>
+                      <td className="py-4 px-6">{port.version}</td>
+                      <td className="py-4 px-6 text-[#64748b] text-sm break-all max-w-sm">{port.banner}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-8 text-center text-base text-[#475569] font-mono shadow-lg">
+              No open ports were detected on the target.
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-10 text-left">
+        {true && (
+          <div className="space-y-6">
+            
+
+
+            <h5 className="text-xl font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-3 font-mono flex items-center gap-3">
+              <ShieldAlert size={24} className="text-[#ef4444]" /> Vulnerability Intelligence
+            </h5>
+            
+            {parsed.cves.length > 0 ? (
+              <div className="space-y-6">
+                {parsed.cves.map((cve) => (
+                  <div key={cve.id} className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg">
+                    <div className="bg-[#0d1117] border-b border-[#21293a] p-4 md:p-5 flex items-center justify-between">
+                      <span className="font-mono text-xl font-bold text-[#ef4444]">{cve.id}</span>
+                      <div className="flex gap-2">
+                        {cve.references.slice(0, 2).map((ref, idx) => (
+                          <a key={idx} href={ref} target="_blank" rel="noreferrer" className="text-xs bg-[#1e293b] text-[#3b82f6] px-3 py-1.5 rounded hover:underline hover:bg-[#3b82f6]/10 transition-colors font-mono">Ref {idx + 1}</a>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="p-5 md:p-6 space-y-6">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                          <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">CVSS Score</div>
+                          <div className="text-xl font-bold text-[#ef4444] font-mono">{cve.cvss}</div>
+                        </div>
+                        <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                          <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Severity</div>
+                          <div className="text-lg font-bold text-[#ef4444] font-mono uppercase tracking-widest">{cve.cvss >= 9 ? 'Critical' : cve.cvss >= 7 ? 'High' : 'Medium'}</div>
+                        </div>
+                        <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                          <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Published Date</div>
+                          <div className="text-sm font-bold text-[#e2e8f0] font-mono mt-1">{cve.publishedDate}</div>
+                        </div>
+                        <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                          <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">MITRE Mapped</div>
+                          <div className="text-xs font-bold text-[#3b82f6] font-mono mt-1 truncate px-1" title={cve.mitreTechnique}>{cve.mitreTechnique.split(' ')[0] || 'Unknown'}</div>
+                        </div>
+                        <div className="bg-[#0d1117] border border-[#21293a] p-3 rounded-lg text-center flex flex-col justify-center">
+                          <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Affected Service</div>
+                          <div className="text-sm font-bold text-[#e2e8f0] font-mono mt-1 truncate px-1" title={cve.affectedService || 'Unknown'}>{cve.affectedService || 'Unknown'}</div>
+                        </div>
+                      </div>
+  
+                      <div>
+                        <h6 className="text-sm font-bold text-[#cbd5e1] uppercase tracking-wider mb-3 font-mono">Vulnerability Description</h6>
+                        <p className="text-sm md:text-base text-[#94a3b8] leading-relaxed bg-[#0d1117] border border-[#21293a] p-4 rounded-lg mb-4">
+                          {cve.description}
+                        </p>
+                        
+                        <h6 className="text-sm font-bold text-[#cbd5e1] uppercase tracking-wider mb-3 font-mono">Remediation</h6>
+                        <p className="text-sm md:text-base text-[#10b981] leading-relaxed bg-[#0d1117] border border-[#21293a] p-4 rounded-lg">
+                          {cve.remediation || "Apply the latest security patches provided by the vendor."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-8 text-center text-base text-[#475569] font-mono shadow-lg">
+                {parsed.ports.length > 0 && parsed.ports.every(p => !p.version || p.version.toLowerCase() === 'unknown') ? (
+                  "Service version information could not be identified. Vulnerability correlation requires accurate product and version detection."
+                ) : (
+                  "No known vulnerabilities were identified for the detected services."
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MITRE ATT&CK Mapping */}
+        {true && (
+          <div className="space-y-4 pt-2">
+            <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
+              <Target size={20} className="text-[#a855f7]" /> MITRE ATT&CK MAPPING
+            </h5>
+            {parsed.mitreMappings && parsed.mitreMappings.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {parsed.mitreMappings.map((mitre, idx) => {
+                  const isHigh = mitre.risk === 'High';
+                  return (
+                    <div key={idx} className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg flex flex-col transition-all hover:border-[#a855f7]/50">
+                      <div className="p-4 bg-[#0d1117] border-b border-[#21293a] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-[#a855f7] bg-[#a855f7]/10 px-2 py-0.5 rounded border border-[#a855f7]/30">{mitre.id}</span>
+                          <span className="text-white font-bold text-sm tracking-wide uppercase truncate">{mitre.name}</span>
+                        </div>
+                        <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${isHigh ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/20' : 'bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20'}`}>
+                          {mitre.risk}
+                        </span>
+                      </div>
+                      <div className="p-4 space-y-3 flex-1 flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#64748b] uppercase font-bold tracking-wider">Tactic:</span>
+                          <span className="text-sm text-[#e2e8f0] bg-[#1e293b] px-2 py-0.5 rounded font-mono">{mitre.tactic}</span>
+                        </div>
+                        <p className="text-sm text-[#94a3b8] leading-relaxed flex-1">
+                          {mitre.description}
+                        </p>
+                        <div className="pt-3 border-t border-[#21293a] mt-auto">
+                          <span className="text-xs text-[#22c55e] font-bold uppercase tracking-wider block mb-1">Recommendation</span>
+                          <p className="text-sm text-[#cbd5e1]">{mitre.recommendation}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-8 text-center text-base text-[#475569] font-mono shadow-lg">
+                No MITRE ATT&CK techniques were directly mapped to the discovered services.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Actionable Recommendations */}
+        {((parsed.aggressiveDetection && pingDiscovery) || parsed.recommendations.length > 0) && (
+          <div className="space-y-4 pt-2">
+            <h5 className="text-lg font-bold text-white uppercase tracking-wider border-b border-[#21293a] pb-2 font-mono flex items-center gap-2">
+              <CheckCircle2 size={20} className="text-[#22c55e]" /> Actionable Recommendations
+            </h5>
+            <div className="bg-[#161b27] border border-[#21293a] rounded-xl p-6 md:p-8 shadow-lg">
+              {parsed.recommendations.length > 0 ? (
+                <ul className="list-none space-y-6">
+                  {parsed.recommendations.map((rec, i) => {
+                    const parts = rec.split(':');
+                    const isTitle = parts.length > 1 && !rec.startsWith('Enforce') && !rec.startsWith('Regular');
+                    return (
+                      <li key={i} className="flex items-start gap-3 text-sm md:text-base text-[#cbd5e1]">
+                        <div className="mt-1 text-[#3b82f6]">
+                          <ArrowRight size={16} />
+                        </div>
+                        <div>
+                          {isTitle ? (
+                            <>
+                              <strong className="text-white block mb-1 text-base">{parts[0]}:</strong>
+                              <span className="text-[#94a3b8] leading-relaxed">{parts.slice(1).join(':')}</span>
+                            </>
+                          ) : (
+                            <span className="text-[#94a3b8] leading-relaxed">{rec}</span>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <div className="text-center text-base text-[#475569] font-mono">
+                  No immediate actionable recommendations.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
