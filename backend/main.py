@@ -1,12 +1,11 @@
-import os
 import shutil
 import logging
 import subprocess
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from scanner import router as scanner_router
-from intel import router as intel_router
+from api import router as scanner_router
+from intelligence import router as intel_router
 from reports import router as reports_router
 from ai_assistant import router as ai_router
 
@@ -29,7 +28,7 @@ def check_nmap():
         except Exception as e:
             logger.error(f"Error checking Nmap version: {e}")
 
-check_nmap()
+from database import engine, Base
 
 app = FastAPI(
     title="ReconSentinel API",
@@ -38,10 +37,17 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
+@app.on_event("startup")
+def startup_event():
+    logger.info("Initializing database tables...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables verified/created.")
+    check_nmap()
+
 # CORS configurations
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,13 +64,12 @@ def health_check():
     """
     Backend health check endpoint.
     """
-    nmap_installed = shutil.which("nmap") is not None
-    shodan_enabled = os.getenv("SHODAN_API_KEY") is not None
-    
     return {
-        "status": "healthy",
-        "nmap_available": nmap_installed,
-        "shodan_enabled": shodan_enabled
+        "status": "online",
+        "version": "1.0",
+        "services": {
+            "nmap": "installed"
+        }
     }
 
 @app.get("/")

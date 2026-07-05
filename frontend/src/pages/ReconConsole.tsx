@@ -35,13 +35,23 @@ interface EnrichedCVE {
   publishedDate: string;
   references: string[];
   mitreTechnique: string;
+  affectedService?: string;
+  remediation?: string;
 }
 
-interface EnrichedShodanData {
+interface OSIntelligenceData {
   status: string;
   message?: string;
   data?: {
     os: string;
+    os_family?: string;
+    vendor?: string;
+    device_type?: string;
+    accuracy?: string;
+    accuracy_num: number;
+    uptime?: string;
+    cpe?: string;
+    is_admin?: boolean;
     org: string;
     isp: string;
     hostnames: string[];
@@ -58,6 +68,7 @@ interface EnrichedScan {
   startTimeFormatted: string;
   endTimeFormatted: string;
   durationFormatted: string;
+  scanType?: string;
   ports: EnrichedPort[];
   cves: EnrichedCVE[];
   hostReachable: boolean;
@@ -73,7 +84,7 @@ interface EnrichedScan {
   executiveSummary: string;
   recommendations: string[];
   mitreMappings: any[];
-  shodanData: EnrichedShodanData | null;
+  osIntelligence: OSIntelligenceData | null;
   aggressiveDetection: boolean;
 }
 
@@ -222,7 +233,7 @@ export default function ReconConsole() {
     const ports: EnrichedPort[] = [];
     const scanCves: EnrichedCVE[] = [];
     
-    let shodanData: EnrichedShodanData | null = results.shodan || null;
+    let osIntelligence: OSIntelligenceData | null = results.osIntelligence || null;
     let aggressiveDetection = results.aggressive_detection || false;
     let scanType = results.scan_type || (results.ping && !aggressiveDetection ? 'host_discovery' : 'advanced');
 
@@ -231,8 +242,6 @@ export default function ReconConsole() {
         if (host.ports && Array.isArray(host.ports)) {
           host.ports.forEach((p: any) => {
             const portNum = Number(p.port);
-            const serviceName = (p.service || '').toLowerCase();
-            const versionStr = (p.version || '').toLowerCase();
 
             let portRisk: 'dangerous' | 'medium' | 'safe' = 'safe';
             let portRiskText = 'Safe';
@@ -406,7 +415,7 @@ export default function ReconConsole() {
       executiveSummary,
       recommendations,
       mitreMappings: results.mitre_mappings || [],
-      shodanData,
+      osIntelligence,
       aggressiveDetection,
       scanType,
     };
@@ -520,7 +529,7 @@ export default function ReconConsole() {
             <Server size={20} className="text-[#3b82f6]" /> Operating System Fingerprint
           </h5>
           <div className="bg-[#161b27] border border-[#21293a] rounded-xl overflow-hidden shadow-lg relative">
-            {parsed.shodanData?.data?.is_admin === false && (
+            {parsed.osIntelligence?.data?.is_admin === false && (
               <div className="bg-[#ef4444]/10 border-b border-[#ef4444]/20 p-3 flex items-start gap-3">
                 <AlertTriangle size={18} className="text-[#ef4444] mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-[#f87171] font-mono leading-relaxed">
@@ -529,44 +538,44 @@ export default function ReconConsole() {
               </div>
             )}
             
-            {parsed.shodanData?.status === 'success' && parsed.shodanData.data ? (
+            {parsed.osIntelligence?.status === 'success' && parsed.osIntelligence.data ? (
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#21293a]">
                   <span className="text-[#94a3b8] font-bold text-sm uppercase tracking-wider">Status:</span>
                   <span className={`text-xs font-bold px-3 py-1 rounded uppercase tracking-wider ${
-                    parsed.shodanData.data.accuracy_num >= 90 ? 'bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20' : 
-                    (parsed.shodanData.data.accuracy_num >= 50 || parsed.shodanData.data.accuracy_num === 0) ? 'bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20' : 
+                    parsed.osIntelligence.data.accuracy_num >= 90 ? 'bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20' : 
+                    (parsed.osIntelligence.data.accuracy_num >= 50 || parsed.osIntelligence.data.accuracy_num === 0) ? 'bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20' : 
                     'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/20'
                   }`}>
-                    {parsed.shodanData.data.accuracy_num >= 90 ? 'Success' : 
-                     (parsed.shodanData.data.accuracy_num >= 50 || parsed.shodanData.data.accuracy_num === 0) ? 'Partial Detection' : 'Detection Failed'}
+                    {parsed.osIntelligence.data.accuracy_num >= 90 ? 'Success' : 
+                     (parsed.osIntelligence.data.accuracy_num >= 50 || parsed.osIntelligence.data.accuracy_num === 0) ? 'Partial Detection' : 'Detection Failed'}
                   </span>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    {parsed.shodanData.data.os && (
+                    {parsed.osIntelligence.data.os && (
                       <div>
                         <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">OS Name</div>
-                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.shodanData.data.os}</div>
+                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.osIntelligence.data.os}</div>
                       </div>
                     )}
-                    {parsed.shodanData.data.os_family && (
+                    {parsed.osIntelligence.data.os_family && (
                       <div>
                         <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">OS Family</div>
-                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.shodanData.data.os_family}</div>
+                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.osIntelligence.data.os_family}</div>
                       </div>
                     )}
-                    {parsed.shodanData.data.vendor && (
+                    {parsed.osIntelligence.data.vendor && (
                       <div>
                         <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Vendor</div>
-                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.shodanData.data.vendor}</div>
+                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.osIntelligence.data.vendor}</div>
                       </div>
                     )}
-                    {parsed.shodanData.data.device_type && (
+                    {parsed.osIntelligence.data.device_type && (
                       <div>
                         <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1 font-bold">Device Type</div>
-                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.shodanData.data.device_type}</div>
+                        <div className="text-base font-bold text-[#f1f5f9] font-mono">{parsed.osIntelligence.data.device_type}</div>
                       </div>
                     )}
                   </div>
@@ -575,33 +584,33 @@ export default function ReconConsole() {
                     <div>
                       <div className="text-xs text-[#64748b] uppercase tracking-wider mb-2 font-bold flex justify-between">
                         <span>Accuracy</span>
-                        <span className={parsed.shodanData.data.accuracy_num >= 90 ? 'text-[#22c55e]' : (parsed.shodanData.data.accuracy_num >= 50 || parsed.shodanData.data.accuracy_num === 0) ? 'text-[#eab308]' : 'text-[#ef4444]'}>{parsed.shodanData.data.accuracy}</span>
+                        <span className={parsed.osIntelligence.data.accuracy_num >= 90 ? 'text-[#22c55e]' : (parsed.osIntelligence.data.accuracy_num >= 50 || parsed.osIntelligence.data.accuracy_num === 0) ? 'text-[#eab308]' : 'text-[#ef4444]'}>{parsed.osIntelligence.data.accuracy}</span>
                       </div>
                       <div className="w-full bg-[#1e293b] rounded-full h-2.5 mb-1 overflow-hidden flex">
-                        <div className={`h-2.5 rounded-full ${parsed.shodanData.data.accuracy_num >= 90 ? 'bg-[#22c55e]' : (parsed.shodanData.data.accuracy_num >= 50 || parsed.shodanData.data.accuracy_num === 0) ? 'bg-[#eab308]' : 'bg-[#ef4444]'}`} style={{ width: parsed.shodanData.data.accuracy_num === 0 ? '100%' : `${parsed.shodanData.data.accuracy_num}%`, opacity: parsed.shodanData.data.accuracy_num === 0 ? 0.3 : 1 }}></div>
+                        <div className={`h-2.5 rounded-full ${parsed.osIntelligence.data.accuracy_num >= 90 ? 'bg-[#22c55e]' : (parsed.osIntelligence.data.accuracy_num >= 50 || parsed.osIntelligence.data.accuracy_num === 0) ? 'bg-[#eab308]' : 'bg-[#ef4444]'}`} style={{ width: parsed.osIntelligence.data.accuracy_num === 0 ? '100%' : `${parsed.osIntelligence.data.accuracy_num}%`, opacity: parsed.osIntelligence.data.accuracy_num === 0 ? 0.3 : 1 }}></div>
                       </div>
-                      {(parsed.shodanData.data.accuracy_num > 0 && parsed.shodanData.data.accuracy_num < 50) && (
+                      {(parsed.osIntelligence.data.accuracy_num > 0 && parsed.osIntelligence.data.accuracy_num < 50) && (
                         <div className="text-xs text-[#ef4444] mt-2 font-mono">Low confidence result.</div>
                       )}
-                      {parsed.shodanData.data.accuracy_num === 0 && (
+                      {parsed.osIntelligence.data.accuracy_num === 0 && (
                         <div className="text-xs text-[#eab308] mt-2 font-mono">Partial matching via available data.</div>
                       )}
                     </div>
                     
-                    {(parsed.shodanData.data.uptime || parsed.shodanData.data.cpe) && (
+                    {(parsed.osIntelligence.data.uptime || parsed.osIntelligence.data.cpe) && (
                       <div className="pt-4 mt-4 border-t border-[#21293a]">
                         <div className="text-xs text-[#94a3b8] uppercase tracking-wider mb-3 font-bold">Additional Information</div>
                         <ul className="space-y-2 text-sm font-mono text-[#cbd5e1]">
-                          {parsed.shodanData.data.uptime && (
+                          {parsed.osIntelligence.data.uptime && (
                             <li className="flex items-start gap-2">
                               <span className="text-[#3b82f6]">-</span>
-                              <span><span className="text-[#94a3b8]">Uptime Guess:</span> {parsed.shodanData.data.uptime}</span>
+                              <span><span className="text-[#94a3b8]">Uptime Guess:</span> {parsed.osIntelligence.data.uptime}</span>
                             </li>
                           )}
-                          {parsed.shodanData.data.cpe && (
+                          {parsed.osIntelligence.data.cpe && (
                             <li className="flex items-start gap-2">
                               <span className="text-[#3b82f6]">-</span>
-                              <span className="break-all"><span className="text-[#94a3b8]">CPE:</span> {parsed.shodanData.data.cpe}</span>
+                              <span className="break-all"><span className="text-[#94a3b8]">CPE:</span> {parsed.osIntelligence.data.cpe}</span>
                             </li>
                           )}
                         </ul>

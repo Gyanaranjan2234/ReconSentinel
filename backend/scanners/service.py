@@ -149,24 +149,6 @@ def detect_service_name(port_num: int, port_data: Dict[str, Any]) -> str:
     return nmap_name or port_data.get("product") or "unknown"
 
 
-def generate_banner(port_num: int, service: str, version: str) -> str:
-    version_sig = version if (version and version != "Unknown") else "1.0"
-    service_sig = service.lower()
-    
-    if "ssh" in service_sig:
-        return f"SSH-2.0-{version_sig}"
-    elif "http" in service_sig or "https" in service_sig or port_num in (80, 443, 8080, 8443):
-        return f"HTTP/1.1 200 OK\r\nServer: {version_sig}\r\nContent-Type: text/html; charset=UTF-8"
-    elif "ftp" in service_sig or port_num == 21:
-        return f"220 FTP server ready - {version_sig}"
-    elif "smtp" in service_sig or port_num == 25:
-        return f"220 mail.recon.local ESMTP {version_sig}"
-    elif "mysql" in service_sig or port_num == 3306:
-        return f"8.0.32-MariaDB-{version_sig}"
-    elif "rdp" in service_sig or port_num == 3389:
-        return f"RDP-NEGOTIATE-PROTOCOL-RESPONSE-{version_sig}"
-    return f"{service} {version_sig} handshake header signature"
-
 
 def parse_nmap_scan(raw_scan: Dict[str, Any], target: str, port_range: str, scan_duration: float, aggressive_detection: bool = False) -> Dict[str, Any]:
     parsed: Dict[str, Any] = {
@@ -225,54 +207,61 @@ def parse_nmap_scan(raw_scan: Dict[str, Any], target: str, port_range: str, scan
             if port_data.get("state") != "open":
                 continue
 
-            service_name = detect_service_name(int(proto), port_data)
-            product = port_data.get("product")
-            version_str = "Unknown"
-            if product and port_data.get("version"):
-                version_str = f"{product} {port_data.get('version')}"
-            elif product:
-                version_str = product
-            elif port_data.get("version"):
-                version_str = port_data.get("version")
+            service_name = port_data.get("name") or detect_service_name(int(proto), port_data)
+            product = port_data.get("product", "")
+            version = port_data.get("version", "")
+            extrainfo = port_data.get("extrainfo", "")
+            
+            import logging
+            logging.info(f"Port: {proto}")
+            logging.info(f"Service: {service_name}")
+            logging.info(f"Product: {product}")
+            logging.info(f"Version: {version}")
+            logging.info(f"ExtraInfo: {extrainfo}")
 
-            if port_data.get("extrainfo") and port_data.get("extrainfo") not in version_str:
-                version_str = f"{version_str} ({port_data.get('extrainfo')})" if version_str != "Unknown" else port_data.get("extrainfo")
+            parts = [p for p in [product, version, extrainfo] if p]
+            version_str = " ".join(parts) if parts else "Unknown"
 
             host_entry["ports"].append({
                 "port": proto,
                 "protocol": "tcp",
                 "state": port_data.get("state"),
                 "service": service_name,
+                "product": product,
                 "version": version_str,
+                "version_raw": version,
                 "reason": port_data.get("reason"),
-                "banner": generate_banner(int(proto), service_name, version_str),
+                "banner": port_data.get("script", {}).get("banner", "") if isinstance(port_data.get("script"), dict) else "",
             })
 
         for proto, port_data in (host.get("udp") or {}).items() if isinstance(host.get("udp"), dict) else []:
             if port_data.get("state") != "open":
                 continue
 
-            service_name = detect_service_name(int(proto), port_data)
-            product = port_data.get("product")
-            version_str = "Unknown"
-            if product and port_data.get("version"):
-                version_str = f"{product} {port_data.get('version')}"
-            elif product:
-                version_str = product
-            elif port_data.get("version"):
-                version_str = port_data.get("version")
+            service_name = port_data.get("name") or detect_service_name(int(proto), port_data)
+            product = port_data.get("product", "")
+            version = port_data.get("version", "")
+            extrainfo = port_data.get("extrainfo", "")
+            
+            logging.info(f"Port: {proto}")
+            logging.info(f"Service: {service_name}")
+            logging.info(f"Product: {product}")
+            logging.info(f"Version: {version}")
+            logging.info(f"ExtraInfo: {extrainfo}")
 
-            if port_data.get("extrainfo") and port_data.get("extrainfo") not in version_str:
-                version_str = f"{version_str} ({port_data.get('extrainfo')})" if version_str != "Unknown" else port_data.get("extrainfo")
+            parts = [p for p in [product, version, extrainfo] if p]
+            version_str = " ".join(parts) if parts else "Unknown"
 
             host_entry["ports"].append({
                 "port": proto,
                 "protocol": "udp",
                 "state": port_data.get("state"),
                 "service": service_name,
+                "product": product,
                 "version": version_str,
+                "version_raw": version,
                 "reason": port_data.get("reason"),
-                "banner": generate_banner(int(proto), service_name, version_str),
+                "banner": port_data.get("script", {}).get("banner", "") if isinstance(port_data.get("script"), dict) else "",
             })
 
         parsed["hosts"].append(host_entry)

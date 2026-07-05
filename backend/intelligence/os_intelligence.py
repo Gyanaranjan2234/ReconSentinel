@@ -55,25 +55,62 @@ def _run_nmap_os_sync(target: str, open_ports: list = None) -> dict:
         # Get OS match
         os_elem = host.find('os')
         if os_elem is not None:
-            osmatch = os_elem.find('osmatch')
-            if osmatch is not None:
-                name = osmatch.get('name', 'Unknown')
-                accuracy = osmatch.get('accuracy', '0')
+            osmatches = os_elem.findall('osmatch')
+            osclasses = os_elem.findall('osclass')
+            
+            import logging
+            logging.info("Raw Nmap OS Data: (XML Element parsed)")
+            logging.info(f"Parsed osmatch: {len(osmatches)} matches found")
+            logging.info(f"Parsed osclass: {len(osclasses)} classes found")
+            
+            best_match = osmatches[0] if osmatches else None
+            best_class = None
+            
+            if best_match is not None:
+                match_classes = best_match.findall('osclass')
+                if match_classes:
+                    best_class = match_classes[0]
+                elif osclasses:
+                    best_class = osclasses[0]
+            elif osclasses:
+                best_class = osclasses[0]
                 
-                os_family = "Unknown"
-                osclass = osmatch.find('osclass')
-                if osclass is not None:
-                    os_family = osclass.get('osfamily', 'Unknown')
+            logging.info(f"Parsed running: {best_class.get('osfamily') if best_class is not None else 'None'} {best_class.get('osgen') if best_class is not None else ''}".strip())
+            logging.info(f"Parsed os_details: {best_match.get('name') if best_match is not None else 'None'}")
+            
+            if best_match is not None or best_class is not None:
+                name = best_match.get('name', 'Partial Detection') if best_match is not None else 'Partial Detection'
+                accuracy = best_match.get('accuracy', '50') if best_match is not None else (best_class.get('accuracy', '50') if best_class is not None else '50')
                 
-                return {
+                os_family = best_class.get('osfamily', 'Unknown') if best_class is not None else 'Unknown'
+                vendor = best_class.get('vendor', 'Unknown') if best_class is not None else 'Unknown'
+                device_type = best_class.get('type', 'Unknown') if best_class is not None else 'Unknown'
+                
+                cpe = "N/A"
+                if best_class is not None:
+                    cpe_elem = best_class.find('cpe')
+                    if cpe_elem is not None and cpe_elem.text:
+                        cpe = cpe_elem.text
+                
+                try:
+                    acc_num = int(accuracy)
+                except ValueError:
+                    acc_num = 50
+                    
+                response = {
                     "os": name,
                     "os_family": os_family,
-                    "accuracy": accuracy + "%",
-                    "accuracy_num": int(accuracy),
-                    "confidence": "High" if int(accuracy) >= 90 else "Medium",
+                    "vendor": vendor,
+                    "device_type": device_type,
+                    "cpe": cpe,
+                    "accuracy": f"{accuracy}%",
+                    "accuracy_num": acc_num,
+                    "confidence": "High" if acc_num >= 90 else ("Medium" if acc_num >= 50 else "Low"),
                     "method": "nmap",
                     "is_admin": True
                 }
+                logging.info(f"Final OS Response: {response}")
+                return response
         
         return _ttl_fallback(target, open_ports)
         
@@ -247,7 +284,7 @@ async def detect_os(target: str, open_ports: list = None) -> dict:
         )
     return result
 
-def get_shodan_host_os(ip: str, open_ports: list = None) -> dict:
+def get_host_os_intelligence(ip: str, open_ports: list = None) -> dict:
     """
     Synchronous wrapper to maintain compatibility with router.py
     while using the new nmap-based async detect_os logic.

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from reports.service import build_pdf_report
 from schemas import ScanResultResponse
-from scanner.router import active_scans
+from api.router import active_scans
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 

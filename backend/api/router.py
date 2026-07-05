@@ -5,7 +5,7 @@ from datetime import datetime
 import socket
 import uuid
 from fastapi import APIRouter, HTTPException, status
-from scanner.service import authorize_target, normalize_port_range, run_nmap_scan, ping_target
+from scanners.service import authorize_target, normalize_port_range, run_nmap_scan, ping_target
 from schemas import ScanCreate, ScanResultResponse
 
 router = APIRouter(prefix="/scan", tags=["Scanner"])
@@ -61,7 +61,7 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         reverse_dns = "N/A"
 
         try:
-            from scanner.service import is_valid_ipv4_address, resolve_host
+            from scanners.service import is_valid_ipv4_address, resolve_host
             if is_valid_ipv4_address(target):
                 resolved_ip = target
             else:
@@ -93,7 +93,7 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
             raise Exception(f"Ping discovery step failed: {exc}")
 
         # Step: Nmap Port Scan
-        print("RUNNING NMAP", target)
+        logging.info(f"RUNNING NMAP {target}")
         import shutil
         if not shutil.which("nmap"):
             raise Exception("Nmap not installed or not found in PATH")
@@ -101,7 +101,7 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         progress.update({"stage": "port_scan", "progress": 50})
         update_scan_record(scan_id, "running", progress)
 
-        print(f"Selected Scan Options:\nPing Discovery = {ping_disc}\nAggressive Detection = {aggressive}")
+        logging.info(f"Selected Scan Options:\nPing Discovery = {ping_disc}\nAggressive Detection = {aggressive}")
 
         if aggressive:
             progress.update({"stage": "service_detection", "progress": 75})
@@ -142,25 +142,26 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         scan_result["resolved_hostname"] = resolved_hostname
         scan_result["reverse_dns"] = reverse_dns
         
-        # Step: Shodan Integration (replaced by Nmap OS)
+        # Step: OS Intelligence (Nmap OS)
         if aggressive:
-            from scanner.service import is_private_host
+            from scanners.service import is_private_host
             
             if is_private_host(resolved_ip) or resolved_ip == "Unknown" or resolved_ip == "127.0.0.1" or resolved_ip == "localhost":
-                scan_result["shodan"] = {"status": "private_ip", "message": "OS intelligence is only available for public internet hosts."}
+                scan_result["osIntelligence"] = {"status": "private_ip", "message": "OS intelligence is only available for public internet hosts."}
                 logging.info(f"[SCAN {scan_id}] OS Intelligence skipped for private/unknown IP: {resolved_ip}")
             else:
                 try:
-                    from intel.shodan_os import get_shodan_host_os
+                    from intelligence.os_intelligence import get_host_os_intelligence
                     open_ports = scan_result.get("open_ports", [])
-                    shodan_response = get_shodan_host_os(resolved_ip, open_ports)
-                    scan_result["shodan"] = shodan_response
-                    logging.info(f"[SCAN {scan_id}] OS lookup completed with status: {shodan_response.get('status')}")
+                    os_response = get_host_os_intelligence(resolved_ip, open_ports)
+                    scan_result["osIntelligence"] = os_response
+                    logging.info(f"[SCAN {scan_id}] OS lookup completed with status: {os_response.get('status')}")
                 except Exception as exc:
                     logging.warning(f"[SCAN {scan_id}] OS integration failed, skipping gracefully: {exc}")
-                    scan_result["shodan"] = {"status": "error", "message": "Unexpected error during OS lookup."}
+                    scan_result["osIntelligence"] = {"status": "error", "message": "Unexpected error during OS lookup."}
         else:
-            scan_result["shodan"] = {"status": "disabled", "message": "Aggressive detection not selected."}
+            scan_result["osIntelligence"] = {"status": "disabled", "message": "Aggressive detection not selected."}
+
 
         # Step: Vulnerability Analysis
         try:
@@ -168,22 +169,24 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
             update_scan_record(scan_id, "running", progress)
 
             from reports.service import get_scan_cves
-            from intel.risk import calculate_risk
-            from intel.mitre import get_techniques
+            from intelligence.risk import calculate_risk
+            from intelligence.mitre import get_techniques
             
             hosts = scan_result.get("hosts", [])
             ports = hosts[0].get("ports", []) if hosts else []
             cves = get_scan_cves(ports)
+            scan_result["cves"] = cves
             scan_result["risk"] = calculate_risk(ports, cves)
             scan_result["mitre_mappings"] = get_techniques(ports)
         except Exception as exc:
             logging.warning(f"[SCAN {scan_id}] Vulnerability analysis failed, continuing: {exc}")
+            scan_result["cves"] = []
             scan_result["risk"] = {"score": 0.0, "level": "Not Assessed"}
             scan_result["mitre_mappings"] = []
             
         end_time = datetime.utcnow()
         update_scan_record(scan_id, "completed", scan_result, end_time=end_time, duration=duration_val)
-        print("SCAN COMPLETED", scan_id)
+        logging.info(f"SCAN COMPLETED {scan_id}")
         
     except Exception as exc:
         logging.error(f"[SCAN {scan_id}] Background scan failed: {exc}\n{traceback.format_exc()}")
@@ -207,7 +210,7 @@ async def trigger_scan(scan_request: ScanCreate):
     import os
     import shutil
     from fastapi.responses import JSONResponse
-    from scanner.service import build_nmap_arguments
+    from scanners.service import build_nmap_arguments
 
     try:
         # Wrap everything in try/catch to identify exact step failure
@@ -239,13 +242,6 @@ async def trigger_scan(scan_request: ScanCreate):
             error_msg = "Nmap not installed or not found in PATH"
             logging.error(f"Step failed: Nmap execution environment - {error_msg}")
             return JSONResponse(status_code=500, content={"success": False, "error": error_msg})
-
-        # Shodan integration check
-        shodan_key = os.getenv("SHODAN_API_KEY")
-        if shodan_key:
-            logging.info("Shodan lookup status: enabled (key present)")
-        else:
-            logging.info("Shodan lookup status: disabled (missing key)")
 
         # Step: Input validation & Host resolution
         try:
@@ -301,16 +297,16 @@ def get_scan_progress(scan_id: str):
     """
     Retrieve the current progress state for an active scan.
     """
-    print("PROGRESS REQUEST:", scan_id)
+    logging.info(f"PROGRESS REQUEST: {scan_id}")
     if scan_id not in active_scans:
-        print("SCAN NOT FOUND IN ACTIVE_SCANS:", scan_id)
+        logging.warning(f"SCAN NOT FOUND IN ACTIVE_SCANS: {scan_id}")
         # Fallback to prevent 404s if the scan was lost (e.g. due to server reload)
         return {
             "status": "running",
             "progress": 45
         }
         
-    print("SCAN FOUND:", scan_id)
+    logging.info(f"SCAN FOUND: {scan_id}")
     scan = active_scans[scan_id]
     status_text = scan.get("status", "running")
     if status_text == "scanning":

@@ -24,10 +24,10 @@ class ScanResultResponse(BaseModel):
     target: str
     status: str
     created_at: datetime
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    duration: Optional[float] = None
-    results: Optional[Dict[str, Any]]
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    duration: float | None = None
+    results: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ThreatIntelResponse(BaseModel):

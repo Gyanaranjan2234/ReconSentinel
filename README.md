@@ -1,69 +1,60 @@
 # ReconSentinel
 
-ReconSentinel is an Intelligent Network Reconnaissance & Threat Intelligence Platform for authorized security assessment, network scanning demonstrations, and threat intelligence lookups.
+ReconSentinel is an Intelligent Network Reconnaissance & Threat Intelligence Platform designed for authorized security assessments, network scanning demonstrations, and threat intelligence lookups.
 
 ## Features
-- **Recon Console:** Real network scanning powered by Nmap — TCP/UDP port discovery, version detection, and OS fingerprinting (uses standard Nmap probing techniques with no persistent storage).
-- **Threat Intelligence Lookup:** Live lookups against NVD (CVE data) and VirusTotal (IP & domain reputation).
-- **Report Engine:** Generate professional PDF security assessment reports with CVE-to-MITRE ATT&CK mapping.
-- **Network Map:** Interactive host topology visualization of active scan targets.
-- **AI Security Assistant:** Integrated AI chat assistant for security guidance.
-- **Modern UI:** Vibrant, high-end dark cybersecurity dashboard — React 18 + Vite + TypeScript + Tailwind CSS.
+
+- **Recon Console:** Live network scanning powered by Nmap. Includes Host Discovery (ICMP), Port Scanning, Service Version Detection, Banner Grabbing, and advanced OS Fingerprinting.
+- **Vulnerability Intelligence:** Automated real-time CVE correlations against discovered service versions using the National Vulnerability Database (NVD).
+- **MITRE ATT&CK Mapping:** Maps discovered vulnerable services and open ports to specific MITRE ATT&CK techniques and tactics for actionable remediation.
+- **Threat Intelligence Lookup:** IP and domain reputation analysis powered by VirusTotal.
+- **Network Map:** Interactive topology visualization of active scan targets.
+- **AI Security Assistant:** Integrated AI chat assistant providing immediate security guidance and mitigation strategies.
+- **Report Engine:** Generates comprehensive PDF security assessment reports summarizing findings and threat intelligence.
+
+---
+
+## Tech Stack
+
+**Frontend (Web Dashboard)**
+- React 18
+- Vite
+- TypeScript
+- Tailwind CSS
+- Framer Motion & Recharts
+
+**Backend (API & Scanning Engine)**
+- Python 3.11+
+- FastAPI
+- Python-Nmap & ICMPLib
+- SQLAlchemy & SQLite
+- ReportLab (PDF Generation)
+
+---
+
+## Screenshots
+> *(Screenshots coming soon)*
 
 ---
 
 ## Directory Structure
-```
+```text
 ReconSentinel/
 ├── backend/
-│   ├── scanner/
-│   │   ├── router.py          # Scan API endpoints
-│   │   └── service.py         # Nmap scanning logic
-│   ├── intel/
-│   │   ├── router.py          # Threat Intel API endpoints
-│   │   └── service.py         # NVD + VirusTotal lookups
-│   ├── reports/
-│   │   ├── router.py          # Report generation endpoints
-│   │   └── service.py         # PDF report builder (ReportLab)
-│   ├── tests/
-│   │   └── test_scan.py       # Integration tests for the scan API
-│   ├── main.py                # FastAPI app entry point
-│   ├── schemas.py             # Pydantic request/response models
-│   ├── requirements.txt
-│   ├── .env.example           # Environment variable template
-│   └── Dockerfile
+│   ├── ai_assistant/        # AI integrations
+│   ├── api/                 # Core API endpoints & scan routing
+│   ├── intelligence/        # Threat intel (NVD, VirusTotal, OS fingerprinting)
+│   ├── reports/             # PDF report generator engine
+│   ├── scanners/            # Nmap orchestration & execution
+│   ├── database.py          # SQLAlchemy SQLite connection
+│   ├── main.py              # FastAPI application entry point
+│   ├── schemas.py           # Pydantic validation models
+│   ├── requirements.txt     
+│   └── .env
 ├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── LandingPage.tsx
-│   │   │   ├── DashboardLayout.tsx
-│   │   │   ├── ReconConsole.tsx
-│   │   │   ├── ThreatIntelligence.tsx
-│   │   │   ├── NetworkMap.tsx
-│   │   │   ├── AIAssistant.tsx
-│   │   │   ├── Documentation.tsx
-│   │   │   ├── Contact.tsx
-│   │   │   ├── PrivacyPolicy.tsx
-│   │   │   └── TermsOfUse.tsx
-│   │   ├── components/
-│   │   │   ├── Navbar.tsx
-│   │   │   └── PageHeader.tsx
-│   │   ├── api/
-│   │   │   └── client.ts      # Axios base client
-│   │   ├── hooks/
-│   │   │   └── useScan.ts
-│   │   ├── types/
-│   │   │   └── index.ts
-│   │   ├── App.tsx
-│   │   ├── index.css
-│   │   └── main.tsx
-│   ├── .env.example           # Frontend environment variable template
+│   ├── src/                 # React components, layouts, hooks, and API clients
 │   ├── package.json
-│   ├── vite.config.ts
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
-│   ├── tsconfig.json
-│   └── index.html
+│   └── vite.config.ts
 ├── docker-compose.yml
 ├── .gitignore
 └── README.md
@@ -74,8 +65,9 @@ ReconSentinel/
 ## Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose
+- Docker & Docker Compose (Recommended)
 - *Alternatively*: Python 3.11+ and Node.js 18+ for local development.
+- **Nmap**: Must be installed on the host system if running locally outside of Docker.
 
 ### Option 1: Running with Docker (Recommended)
 1. Configure backend environment variables:
@@ -110,7 +102,7 @@ ReconSentinel/
 3. Configure environment:
    ```bash
    cp .env.example .env
-   # Edit .env and add your NVD_API_KEY, VIRUSTOTAL_API_KEY, GEMINI_API_KEY
+   # Edit .env and add your NVD_API_KEY, VIRUSTOTAL_API_KEY, GEMINI_API_KEY, etc.
    ```
 4. Start the development server:
    ```bash
@@ -122,15 +114,19 @@ ReconSentinel/
    ```bash
    cd frontend
    ```
-2. Install dependencies:
+2. Configure environment:
+   ```bash
+   cp .env.example .env
+   ```
+3. Install dependencies:
    ```bash
    npm install
    ```
-3. Start the Vite development server:
+4. Start the Vite development server:
    ```bash
    npm run dev
    ```
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
@@ -140,18 +136,13 @@ ReconSentinel/
 | [NVD API](https://nvd.nist.gov/developers/request-an-api-key) | CVE threat intelligence lookups | Free |
 | [VirusTotal API](https://www.virustotal.com/gui/my-apikey) | IP & domain reputation checks | Free (public tier) |
 | [Google Gemini API](https://aistudio.google.com/) | AI Security Assistant | Free/Paid |
+| [Anthropic API](https://console.anthropic.com/) | AI Security Assistant (Alternate) | Paid |
+
+*(Note: Shodan integration has been completely removed in favor of native Nmap OS intelligence.)*
 
 ---
 
-## Running Tests
-Integration tests require the backend server to be running:
-```bash
-cd backend
-python -m pytest tests/test_scan.py -v
-```
-
----
-
-## Security Notice
-> ReconSentinel is intended strictly for **authorized** security assessment and educational use.
+## Legal / Disclaimer
+> **For authorized security testing only.**
+> ReconSentinel is intended strictly for authorized security assessment and educational use.
 > Scanning systems without explicit permission is illegal. Always ensure you have written authorization before scanning any target.

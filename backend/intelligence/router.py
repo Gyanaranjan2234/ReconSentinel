@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 import uuid
 from datetime import datetime
 from schemas import ThreatIntelResponse
-from intel.service import lookup_intel_summary
+from intelligence.service import lookup_intel_summary
 
 router = APIRouter(prefix="/intel", tags=["Threat Intelligence"])
 

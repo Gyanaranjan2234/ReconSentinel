@@ -38,153 +38,214 @@ def get_ports_scanned_count(port_range: str) -> int:
             pass
     return len(port_range.split(","))
 
+import asyncio
+import aiohttp
+import re
 
-def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    cves = []
-    logging.info(f"[VULN ENGINE] CVE Lookup Started: {len(ports)} ports")
+def parse_banner_for_cve_search(banner: str) -> str:
+    if not banner:
+        return None
     
+    # Common patterns to extract name + version
+    patterns = [
+        r'(vsftpd)\s+([\d.]+)',
+        r'(openssh)[_\s]+([\d.]+)',
+        r'(apache)/([\d.]+)',
+        r'(nginx)/([\d.]+)',
+        r'(php)/([\d.]+)',
+        r'(samba)\s+([\d.]+)',
+        r'(proftpd)\s+([\d.]+)',
+        r'(mysql)\s+([\d.]+)',
+        r'(postgresql)\s+([\d.]+)',
+        r'(iis)/([\d.]+)',
+        r'(litespeed)[\s/]+([\d.]+)',
+        r'(tomcat)/([\d.]+)',
+        r'(wordpress)[\s/]+([\d.]+)',
+    ]
+    
+    banner_lower = banner.lower()
+    for pattern in patterns:
+        match = re.search(pattern, banner_lower)
+        if match:
+            name = match.group(1)
+            version = match.group(2)
+            return f"{name} {version}"
+    
+    return None
+
+KNOWN_VULNS = {
+    "vsftpd 2.3.4": [{
+        "id": "CVE-2011-2523",
+        "description": "vsftpd 2.3.4 backdoor — remote root shell via smiley face ':)' in username",
+        "cvss": 10.0,
+        "severity": "High",
+        "publishedDate": "2011-08-09",
+        "references": "https://nvd.nist.gov/vuln/detail/CVE-2011-2523",
+        "mitreTechnique": "Exploit Public-Facing Application (T1190)",
+        "confidence": "High",
+        "affectedService": "vsftpd 2.3.4",
+        "remediation": "Upgrade to a newer version of vsftpd or restrict network access to the port."
+    }],
+    "openssh 4.7": [{
+        "id": "CVE-2008-0166",
+        "description": "OpenSSH predictable random number generator — weak keys",
+        "cvss": 7.8,
+        "severity": "High",
+        "publishedDate": "2008-05-13",
+        "references": "https://nvd.nist.gov/vuln/detail/CVE-2008-0166",
+        "mitreTechnique": "Exploit Public-Facing Application (T1190)",
+        "confidence": "High",
+        "affectedService": "OpenSSH 4.7",
+        "remediation": "Generate new host keys and update OpenSSH to a secure version."
+    }],
+    "apache 2.2.8": [{
+        "id": "CVE-2009-1195",
+        "description": "Apache AllowOverride directive bypass",
+        "cvss": 4.9,
+        "severity": "Medium",
+        "publishedDate": "2009-05-01",
+        "references": "https://nvd.nist.gov/vuln/detail/CVE-2009-1195",
+        "mitreTechnique": "Exploit Public-Facing Application (T1190)",
+        "confidence": "High",
+        "affectedService": "Apache 2.2.8",
+        "remediation": "Upgrade Apache HTTP Server to a newer version."
+    }],
+    "samba 3": [{
+        "id": "CVE-2007-2447",
+        "description": "Samba MS-RPC shell metacharacter injection — remote code execution",
+        "cvss": 9.3,
+        "severity": "High",
+        "publishedDate": "2007-05-14",
+        "references": "https://nvd.nist.gov/vuln/detail/CVE-2007-2447",
+        "mitreTechnique": "Exploit Public-Facing Application (T1190)",
+        "confidence": "High",
+        "affectedService": "Samba 3.x",
+        "remediation": "Apply vendor patches or upgrade to a newer Samba release."
+    }],
+    "php 5.2": [{
+        "id": "CVE-2012-1823",
+        "description": "PHP CGI query string parameter injection — RCE",
+        "cvss": 7.5,
+        "severity": "High",
+        "publishedDate": "2012-05-03",
+        "references": "https://nvd.nist.gov/vuln/detail/CVE-2012-1823",
+        "mitreTechnique": "Exploit Public-Facing Application (T1190)",
+        "confidence": "High",
+        "affectedService": "PHP 5.2",
+        "remediation": "Upgrade PHP or reconfigure CGI to block query string exploits."
+    }]
+}
+
+async def search_nvd_cves(keyword: str) -> List[Dict[str, Any]]:
+    await asyncio.sleep(0.6)
+    cves_result = []
+    url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={keyword}&resultsPerPage=5"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    vulnerabilities = data.get("vulnerabilities", [])
+                    for v in vulnerabilities:
+                        cve = v.get("cve", {})
+                        cve_id = cve.get("id", "Unknown")
+                        metrics = cve.get("metrics", {})
+                        
+                        base_score = 0.0
+                        severity = "Unknown"
+                        
+                        if "cvssMetricV31" in metrics:
+                            metric = metrics["cvssMetricV31"][0].get("cvssData", {})
+                            base_score = metric.get("baseScore", 0.0)
+                            severity = metric.get("baseSeverity", "Unknown").capitalize()
+                        elif "cvssMetricV30" in metrics:
+                            metric = metrics["cvssMetricV30"][0].get("cvssData", {})
+                            base_score = metric.get("baseScore", 0.0)
+                            severity = metric.get("baseSeverity", "Unknown").capitalize()
+                        elif "cvssMetricV2" in metrics:
+                            metric = metrics["cvssMetricV2"][0].get("cvssData", {})
+                            base_score = metric.get("baseScore", 0.0)
+                            severity = metrics["cvssMetricV2"][0].get("baseSeverity", "Unknown").capitalize()
+                            
+                        desc_list = cve.get("descriptions", [])
+                        desc_en = next((d["value"] for d in desc_list if d.get("lang") == "en"), "No description available.")
+                        
+                        published_date = cve.get("published", "Unknown").split("T")[0]
+                        refs_list = cve.get("references", [])
+                        refs = refs_list[0].get("url") if refs_list else f"https://nvd.nist.gov/vuln/detail/{cve_id}"
+                        
+                        cves_result.append({
+                            "id": cve_id,
+                            "cvss": base_score,
+                            "severity": severity,
+                            "description": desc_en,
+                            "publishedDate": published_date,
+                            "references": refs,
+                            "mitreTechnique": "Exploit Public-Facing Application (T1190)",
+                            "confidence": "Medium",
+                            "affectedService": keyword,
+                            "remediation": "Apply vendor patches or updates."
+                        })
+    except Exception as e:
+        logging.warning(f"[VULN ENGINE] NVD API search failed for {keyword}: {e}")
+        
+    return cves_result
+
+async def _process_ports(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    cves = []
     for p in ports:
         service = p.get("service", "").lower()
         product = p.get("product", service)
         version = p.get("version", "")
+        banner = p.get("banner", "")
         version_lower = version.lower()
 
-        logging.info(f"[VULN ENGINE] Detected Service: {service}")
         logging.info(f"[VULN ENGINE] Detected Product: {product}")
         logging.info(f"[VULN ENGINE] Detected Version: {version}")
 
-        if not version or version_lower == "unknown":
+        # Construct a simulated banner if none exists to reuse the parser correctly
+        simulated_banner = banner if banner else f"{product} {version}"
+        keyword = parse_banner_for_cve_search(simulated_banner)
+        
+        # If simulated banner doesn't match a pattern, fallback to product + version (raw text)
+        if not keyword and product and version and version != "Unknown":
+            keyword = f"{product} {version}".lower()
+            
+        if not keyword:
             continue
 
-        if "squid" in service or "squid" in version_lower:
-            confidence = None
-            if "5.0" in version_lower or "5.1" in version_lower or "5.2" in version_lower:
-                confidence = "High"
-            elif "5." in version_lower:
-                confidence = "Low"
+        logging.info(f"[VULN ENGINE] CVE Query: {keyword}")
+
+        found_in_known = False
+        for key in KNOWN_VULNS:
+            if key in keyword.lower():
+                cves.extend(KNOWN_VULNS[key])
+                found_in_known = True
+                break
                 
-            if confidence and not any(c["id"] == "CVE-2023-45897" for c in cves):
-                cves.append({
-                    "id": "CVE-2023-45897",
-                    "cvss": 9.8,
-                    "severity": "Critical",
-                    "description": "The Squid proxy remote code execution flaw allows remote attackers to execute arbitrary code via unverified HTTP requests.",
-                    "published_date": "2023-10-15",
-                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2023-45897",
-                    "mitre": "Exploit Public-Facing Application (T1190), Remote Access Software (T1219)",
-                    "confidence": confidence,
-                    "affectedService": "Squid Proxy",
-                    "remediation": "Update Squid to version 6.5 or apply vendor patches to mitigate the buffer overflow."
-                })
-
-        if "apache" in service or "apache" in version_lower:
-            confidence = None
-            if "2.4.48" in version_lower or "2.4.49" in version_lower:
-                confidence = "High"
-            elif "2.4" in version_lower:
-                confidence = "Low"
-            
-            if confidence and not any(c["id"] == "CVE-2021-40438" for c in cves):
-                cves.append({
-                    "id": "CVE-2021-40438",
-                    "cvss": 7.5,
-                    "severity": "High",
-                    "description": "Apache HTTP Server mod_proxy SSRF vulnerability allows remote attackers to coerce the server into routing requests to arbitrary endpoints.",
-                    "published_date": "2021-09-16",
-                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-40438",
-                    "mitre": "Exploit Public-Facing Application (T1190)",
-                    "confidence": confidence,
-                    "affectedService": "Apache HTTP Server",
-                    "remediation": "Upgrade Apache HTTP Server to version 2.4.51 or later to resolve the SSRF vulnerability."
-                })
-
-        if "ssh" in service or "ssh" in version_lower:
-            confidence = None
-            if any(v in version_lower for v in ["8.5", "8.6", "8.7", "8.8", "8.9", "9.0", "9.1", "9.2", "9.3", "9.4", "9.5", "9.6", "9.7"]):
-                confidence = "High"
-            elif "9.8" not in version_lower:
-                confidence = "Low"
-                
-            if confidence and not any(c["id"] == "CVE-2024-6387" for c in cves):
-                cves.append({
-                    "id": "CVE-2024-6387",
-                    "cvss": 8.1,
-                    "severity": "High",
-                    "description": "A signal handler race condition vulnerability was found in OpenSSH's server (sshd), allowing unauthenticated remote code execution as root.",
-                    "published_date": "2024-07-01",
-                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2024-6387",
-                    "mitre": "Exploit Public-Facing Application (T1190)",
-                    "confidence": confidence,
-                    "affectedService": "OpenSSH sshd",
-                    "remediation": "Apply the latest OpenSSH updates (e.g., 9.8p1) or set LoginGraceTime to 0 in sshd_config as a mitigation."
-                })
-                
-        if "nginx" in service or "nginx" in version_lower:
-            confidence = "High" if "1.18" in version_lower else "Low"
-            if not any(c["id"] == "CVE-2021-23017" for c in cves):
-                cves.append({
-                    "id": "CVE-2021-23017",
-                    "cvss": 7.5,
-                    "severity": "High",
-                    "description": "A security issue in nginx resolver was identified, which might allow an unauthenticated remote attacker to cause 1-byte memory overwrite.",
-                    "published_date": "2021-05-25",
-                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-23017",
-                    "mitre": "Exploit Public-Facing Application (T1190)",
-                    "confidence": confidence,
-                    "affectedService": "Nginx",
-                    "remediation": "Update Nginx to 1.20.1 or 1.21.0 to fix the memory overwrite vulnerability."
-                })
-
-        if "mysql" in service or "mysql" in version_lower:
-            confidence = "High" if "5.7" in version_lower else "Low"
-            if not any(c["id"] == "CVE-2021-2144" for c in cves):
-                cves.append({
-                    "id": "CVE-2021-2144",
-                    "cvss": 4.9,
-                    "severity": "Medium",
-                    "description": "Vulnerability in the MySQL Server product of Oracle MySQL.",
-                    "published_date": "2021-04-22",
-                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-2144",
-                    "mitre": "Exploit Public-Facing Application (T1190)",
-                    "confidence": confidence,
-                    "affectedService": "MySQL Server",
-                    "remediation": "Apply the corresponding Oracle Critical Patch Update for MySQL."
-                })
-
-        if "postgres" in service or "postgres" in version_lower:
-            confidence = "High" if "13.0" in version_lower else "Low"
-            if not any(c["id"] == "CVE-2021-32027" for c in cves):
-                cves.append({
-                    "id": "CVE-2021-32027",
-                    "cvss": 8.8,
-                    "severity": "High",
-                    "description": "A flaw was found in PostgreSQL. An attacker could modify arbitrary bytes in server memory.",
-                    "published_date": "2021-05-13",
-                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2021-32027",
-                    "mitre": "Exploit Public-Facing Application (T1190)",
-                    "confidence": confidence,
-                    "affectedService": "PostgreSQL",
-                    "remediation": "Update PostgreSQL to versions 13.3, 12.7, 11.12, or later."
-                })
-
-        if "ftp" in service or "ftp" in version_lower:
-            confidence = "High" if "proftpd" in version_lower else "Low"
-            if not any(c["id"] == "CVE-2015-3306" for c in cves):
-                cves.append({
-                    "id": "CVE-2015-3306",
-                    "cvss": 9.8,
-                    "severity": "Critical",
-                    "description": "ProFTPD mod_copy allows remote attackers to read and write to arbitrary files.",
-                    "published_date": "2015-05-18",
-                    "references": "https://nvd.nist.gov/vuln/detail/CVE-2015-3306",
-                    "mitre": "Exploit Public-Facing Application (T1190)",
-                    "confidence": confidence,
-                    "affectedService": "ProFTPD",
-                    "remediation": "Upgrade ProFTPD to 1.3.5a or restrict mod_copy module."
-                })
-
-    logging.info(f"[VULN ENGINE] CVE Results Returned: {len(cves)}")
+        if not found_in_known:
+            api_cves = await search_nvd_cves(keyword)
+            for cve in api_cves:
+                if not any(c["id"] == cve["id"] for c in cves):
+                    cves.append(cve)
+                    
+    logging.info(f"[VULN ENGINE] CVE Results: {len(cves)} CVEs found")
     return cves
+
+def get_scan_cves(ports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    logging.info(f"[VULN ENGINE] CVE Lookup Started: {len(ports)} ports")
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+        
+    if loop and loop.is_running():
+        # Fallback to run in executor or synchronous execution if we're in a running loop
+        import nest_asyncio
+        nest_asyncio.apply()
+        return asyncio.run(_process_ports(ports))
+    else:
+        return asyncio.run(_process_ports(ports))
 
 
 class RoundedBadge(Flowable):

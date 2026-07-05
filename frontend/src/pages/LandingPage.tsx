@@ -11,7 +11,6 @@ import {
   Bot,
   ArrowRight,
   CheckCircle2,
-  Lock,
   ChevronRight,
   ChevronDown,
   X,
@@ -22,7 +21,6 @@ import {
   Mail,
   Linkedin,
   MessageSquare,
-  Heart,
   ExternalLink
 } from 'lucide-react';
 

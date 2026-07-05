@@ -56,3 +56,8 @@ tmp/
 temp/
 *.tmp
 .cache/
+
+# Additions per user request
+backend/.env
+frontend/dist/
+*.xml

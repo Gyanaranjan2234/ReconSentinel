@@ -84,7 +84,7 @@ export function useScan() {
       })();
       
       return createdScan;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to trigger scan:', err);
       const message = err.response?.data?.detail || err.message || 'Unknown error';
       setScanError(String(message));

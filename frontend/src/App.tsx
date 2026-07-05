@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
-import DashboardLayout from './pages/DashboardLayout';
+import DashboardLayout from './layouts/DashboardLayout';
 import LandingPage from './pages/LandingPage';
 import TermsOfUse from './pages/TermsOfUse';
 import PrivacyPolicy from './pages/PrivacyPolicy';
