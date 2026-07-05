@@ -138,7 +138,6 @@ ReconSentinel/
 | [Google Gemini API](https://aistudio.google.com/) | AI Security Assistant | Free/Paid |
 | [Anthropic API](https://console.anthropic.com/) | AI Security Assistant (Alternate) | Paid |
 
-*(Note: Shodan integration has been completely removed in favor of native Nmap OS intelligence.)*
 
 ---
 
