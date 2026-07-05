@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///C:/Program Files (x86)/Nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.95 scan initiated Sat Jul  4 22:03:32 2026 as: &quot;C:\\Program Files (x86)\\Nmap\\nmap.exe&quot; -sV -O -&#45;osscan-guess -p 80 -oX temp.xml scanme.nmap.org -->
+<nmaprun scanner="nmap" args="&quot;C:\\Program Files (x86)\\Nmap\\nmap.exe&quot; -sV -O -&#45;osscan-guess -p 80 -oX temp.xml scanme.nmap.org" start="1783182812" startstr="Sat Jul  4 22:03:32 2026" version="7.95" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="1" services="80"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<hosthint><status state="up" reason="unknown-response" reason_ttl="0"/>
+<address addr="45.33.32.156" addrtype="ipv4"/>
+<hostnames>
+<hostname name="scanme.nmap.org" type="user"/>
+</hostnames>
+</hosthint>
+<host starttime="1783182813" endtime="1783182832"><status state="up" reason="reset" reason_ttl="251"/>
+<address addr="45.33.32.156" addrtype="ipv4"/>
+<hostnames>
+<hostname name="scanme.nmap.org" type="user"/>
+<hostname name="scanme.nmap.org" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="80"><state state="open" reason="syn-ack" reason_ttl="44"/><service name="http" product="Apache httpd" version="2.4.7" extrainfo="(Ubuntu)" method="probed" conf="10"><cpe>cpe:/a:apache:http_server:2.4.7</cpe></service></port>
+</ports>
+<os><portused state="open" proto="tcp" portid="80"/>
+<portused state="closed" proto="udp" portid="44357"/>
+</os>
+<uptime seconds="1233539" lastboot="Sat Jun 20 15:24:53 2026"/>
+<distance value="24"/>
+<tcpsequence index="262" difficulty="Good luck!" values="943740E6,30752055,3766935E,31487803,1E922C77,77AE602D"/>
+<ipidsequence class="All zeros" values="0,0,0,0,0,0"/>
+<tcptssequence class="1000HZ" values="49863BD7,49863C42,49863CA9,49863D26,49863D8A,49863DF9"/>
+<times srtt="219167" rttvar="93265" to="592227"/>
+</host>
+<runstats><finished time="1783182832" timestr="Sat Jul  4 22:03:52 2026" summary="Nmap done at Sat Jul  4 22:03:52 2026; 1 IP address (1 host up) scanned in 19.47 seconds" elapsed="19.47" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

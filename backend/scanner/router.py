@@ -41,6 +41,8 @@ def update_scan_record(
 
 
 def run_scan_job(scan_id: str, scan_data: dict) -> None:
+    import traceback
+    import os
     try:
         start_time = datetime.utcnow()
         
@@ -52,35 +54,38 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         }
         update_scan_record(scan_id, "running", progress, start_time=start_time)
 
-        # Target IP resolution & Reverse DNS
+        # Step: Target IP resolution & Reverse DNS
         target = scan_data["target"]
         resolved_ip = "Unknown"
         resolved_hostname = target
         reverse_dns = "N/A"
 
-        from scanner.service import is_valid_ipv4_address, resolve_host
         try:
+            from scanner.service import is_valid_ipv4_address, resolve_host
             if is_valid_ipv4_address(target):
                 resolved_ip = target
             else:
                 ips = resolve_host(target)
                 if ips:
                     resolved_ip = ips[0]
-        except Exception:
-            pass
-
-        try:
+                    
             if resolved_ip and resolved_ip != "Unknown":
                 name_info = socket.gethostbyaddr(resolved_ip)
                 reverse_dns = name_info[0]
                 resolved_hostname = name_info[0]
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.warning(f"[SCAN {scan_id}] Host resolution failed: {exc}")
 
-        ping_summary = ping_target(scan_data["target"])
-        progress.update({"stage": "host_discovery", "progress": 20, "ping": ping_summary})
-        update_scan_record(scan_id, "running", progress)
+        # Step: Ping Discovery
+        try:
+            ping_summary = ping_target(target)
+            progress.update({"stage": "host_discovery", "progress": 20, "ping": ping_summary})
+            update_scan_record(scan_id, "running", progress)
+        except Exception as exc:
+            logging.error(f"[SCAN {scan_id}] Ping discovery failed: {exc}\n{traceback.format_exc()}")
+            raise Exception(f"Ping discovery step failed: {exc}")
 
+        # Step: Nmap Port Scan
         print("RUNNING NMAP", target)
         import shutil
         if not shutil.which("nmap"):
@@ -90,7 +95,6 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         update_scan_record(scan_id, "running", progress)
 
         port_range = normalize_port_range(scan_data.get("port_range", "1-1024"))
-        
         aggressive = scan_data.get("aggressive_detection", False)
         ping_disc = scan_data.get("ping_discovery", True)
         
@@ -103,13 +107,17 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
             progress.update({"stage": "os_fingerprinting", "progress": 90})
             update_scan_record(scan_id, "running", progress)
 
-        scan_result = run_nmap_scan(
-            scan_data["target"],
-            port_range,
-            scan_data.get("threads", 8),
-            scan_data.get("ping_discovery", True),
-            scan_data.get("aggressive_detection", False),
-        )
+        try:
+            scan_result = run_nmap_scan(
+                target,
+                port_range,
+                scan_data.get("threads", 8),
+                ping_disc,
+                aggressive,
+            )
+        except Exception as exc:
+            logging.error(f"[SCAN {scan_id}] Nmap execution/parsing failed: {exc}\n{traceback.format_exc()}")
+            raise Exception(f"Nmap execution or XML parsing failed: {exc}")
 
         end_time = datetime.utcnow()
         duration_val = (end_time - start_time).total_seconds()
@@ -121,30 +129,51 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         # Inject scan parameters and host metadata
         scan_result["port_range"] = port_range
         scan_result["threads"] = scan_data.get("threads", 8)
-        scan_result["aggressive_detection"] = scan_data.get("aggressive_detection", False)
-        scan_result["ping_discovery"] = scan_data.get("ping_discovery", True)
+        scan_result["aggressive_detection"] = aggressive
+        scan_result["ping_discovery"] = ping_disc
         scan_result["resolved_ip"] = resolved_ip
         scan_result["resolved_hostname"] = resolved_hostname
         scan_result["reverse_dns"] = reverse_dns
         
-        progress.update({"stage": "vulnerability_analysis", "progress": 95})
-        update_scan_record(scan_id, "running", progress)
+        # Step: Shodan Integration
+        shodan_key = os.getenv("SHODAN_API_KEY")
+        if shodan_key and resolved_ip and resolved_ip != "Unknown":
+            try:
+                from intel.shodan_os import get_shodan_host_os
+                shodan_info = get_shodan_host_os(resolved_ip)
+                if shodan_info:
+                    scan_result["shodan"] = shodan_info
+                    logging.info(f"[SCAN {scan_id}] Shodan lookup successful")
+            except Exception as exc:
+                logging.warning(f"[SCAN {scan_id}] Shodan integration failed, skipping gracefully: {exc}")
 
-        from reports.service import get_scan_cves
-        from intel.risk import calculate_risk
-        from intel.mitre import get_techniques
-        
-        hosts = scan_result.get("hosts", [])
-        ports = hosts[0].get("ports", []) if hosts else []
-        cves = get_scan_cves(ports)
-        scan_result["risk"] = calculate_risk(ports, cves)
-        scan_result["mitre_mappings"] = get_techniques(ports)
+        # Step: Vulnerability Analysis
+        try:
+            progress.update({"stage": "vulnerability_analysis", "progress": 95})
+            update_scan_record(scan_id, "running", progress)
+
+            from reports.service import get_scan_cves
+            from intel.risk import calculate_risk
+            from intel.mitre import get_techniques
+            
+            hosts = scan_result.get("hosts", [])
+            ports = hosts[0].get("ports", []) if hosts else []
+            cves = get_scan_cves(ports)
+            scan_result["risk"] = calculate_risk(ports, cves)
+            scan_result["mitre_mappings"] = get_techniques(ports)
+        except Exception as exc:
+            logging.error(f"[SCAN {scan_id}] Vulnerability analysis failed: {exc}\n{traceback.format_exc()}")
+            # Proceeding without failing the whole scan if vuln analysis fails
+            scan_result["risk"] = {"score": 0.0, "level": "Unknown"}
+            scan_result["mitre_mappings"] = []
 
         update_scan_record(scan_id, "completed", scan_result, end_time=end_time, duration=duration_val)
         print("SCAN COMPLETED", scan_id)
+        
     except Exception as exc:
+        logging.error(f"[SCAN {scan_id}] Background scan failed: {exc}\n{traceback.format_exc()}")
         end_time = datetime.utcnow()
-        duration_val = (end_time - start_time).total_seconds()
+        duration_val = (end_time - start_time).total_seconds() if 'start_time' in locals() else 0
         update_scan_record(
             scan_id, 
             "failed", 
@@ -154,47 +183,102 @@ def run_scan_job(scan_id: str, scan_data: dict) -> None:
         )
 
 
-@router.post("/", response_model=ScanResultResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def trigger_scan(scan_request: ScanCreate):
     """
     Trigger a network/host scanner task for authorized targets.
     """
     import traceback
+    import os
+    import shutil
+    from fastapi.responses import JSONResponse
+    from scanner.service import build_nmap_arguments
+
     try:
+        # Wrap everything in try/catch to identify exact step failure
+        scan_data = scan_request.model_dump() if hasattr(scan_request, "model_dump") else scan_request.dict()
+        
+        logging.info("--- SCAN INITIATED ---")
+        logging.info(f"Request payload: {scan_data}")
+        logging.info(f"Target host: {scan_request.target}")
+        
+        port_range = scan_data.get("port_range", "1-1024")
+        threads = scan_data.get("threads", 8)
+        aggressive = scan_data.get("aggressive_detection", False)
+        ping_disc = scan_data.get("ping_discovery", True)
+        
+        logging.info(f"Port range: {port_range}")
+        logging.info(f"Scan options: Threads={threads}, Aggressive={aggressive}, Ping={ping_disc}")
+        
+        # Step: Nmap command generation check
+        try:
+            nmap_cmd = build_nmap_arguments(port_range, threads, aggressive, ping_disc)
+            logging.info(f"Generated Nmap arguments: {nmap_cmd}")
+        except Exception as exc:
+            error_msg = f"Failed to generate Nmap command: {exc}"
+            logging.error(f"Step failed: Nmap command generation - {error_msg}\n{traceback.format_exc()}")
+            return JSONResponse(status_code=500, content={"success": False, "error": error_msg})
+
+        # Verify Nmap exists
+        if not shutil.which("nmap"):
+            error_msg = "Nmap not installed or not found in PATH"
+            logging.error(f"Step failed: Nmap execution environment - {error_msg}")
+            return JSONResponse(status_code=500, content={"success": False, "error": error_msg})
+
+        # Shodan integration check
+        shodan_key = os.getenv("SHODAN_API_KEY")
+        if shodan_key:
+            logging.info("Shodan lookup status: enabled (key present)")
+        else:
+            logging.info("Shodan lookup status: disabled (missing key)")
+
+        # Step: Input validation & Host resolution
         try:
             authorize_target(scan_request.target)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            error_msg = str(exc)
+            logging.error(f"Step failed: Input validation - {error_msg}")
+            return JSONResponse(status_code=400, content={"success": False, "error": error_msg})
+        except Exception as exc:
+            error_msg = str(exc)
+            logging.error(f"Step failed: Host resolution - {error_msg}\n{traceback.format_exc()}")
+            return JSONResponse(status_code=500, content={"success": False, "error": f"Host resolution failed: {error_msg}"})
 
-        scan_id = str(uuid.uuid4())
-        scan_data = scan_request.model_dump() if hasattr(scan_request, "model_dump") else scan_request.dict()
-        
-        active_scans[scan_id] = {
-            "id": scan_id,
-            "target": scan_request.target,
-            "status": "scanning",
-            "created_at": datetime.utcnow(),
-            "start_time": None,
-            "end_time": None,
-            "duration": None,
-            "results": {"stage": "queued", "progress": 0, "target": scan_request.target},
-        }
-        
-        print("SCAN CREATED:", scan_id)
+        # Step: Scan record creation
+        try:
+            scan_id = str(uuid.uuid4())
+            active_scans[scan_id] = {
+                "id": scan_id,
+                "target": scan_request.target,
+                "status": "scanning",
+                "created_at": datetime.utcnow(),
+                "start_time": None,
+                "end_time": None,
+                "duration": None,
+                "results": {"stage": "queued", "progress": 0, "target": scan_request.target},
+            }
+            logging.info(f"SCAN CREATED: {scan_id}")
+        except Exception as exc:
+            error_msg = str(exc)
+            logging.error(f"Step failed: Scan record creation - {error_msg}\n{traceback.format_exc()}")
+            return JSONResponse(status_code=500, content={"success": False, "error": f"Failed to create scan record: {error_msg}"})
 
+        # Step: Background dispatch
         try:
             asyncio.create_task(asyncio.to_thread(run_scan_job, scan_id, scan_data))
         except Exception as exc:
-            logging.error(f"Error starting background scan task: {exc}", exc_info=True)
+            error_msg = str(exc)
+            logging.error(f"Step failed: Background dispatch - {error_msg}\n{traceback.format_exc()}")
             active_scans[scan_id]["status"] = "failed"
-            active_scans[scan_id]["results"]["error"] = str(exc)
+            active_scans[scan_id]["results"]["error"] = error_msg
+            return JSONResponse(status_code=500, content={"success": False, "error": f"Failed to start background task: {error_msg}"})
             
         return active_scans[scan_id]
-    except HTTPException:
-        raise
+
     except Exception as exc:
-        logging.error(f"Unhandled exception in trigger_scan: {exc}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(exc))
+        logging.error(f"Step failed: Response serialization or Unhandled Error - {exc}\n{traceback.format_exc()}")
+        return JSONResponse(status_code=500, content={"success": False, "error": str(exc)})
+
 
 
 @router.get("/progress/{scan_id}")
