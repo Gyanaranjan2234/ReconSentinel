@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { 
   LayoutDashboard, 
   Network, 
-  Menu, 
-  Shield,
+  Menu,
   Home,
   ArrowLeft,
   Bot,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useScan } from '../hooks/useScan';
+import logo from '../assets/reconsentinel-logo.png';
 
 function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -52,9 +52,7 @@ function DashboardLayout() {
       `}>
         {/* Sidebar Header / Logo */}
         <div className="h-16 border-b border-[#21293a] flex items-center px-5 gap-3">
-          <div className="bg-[#3b82f6]/10 p-2 rounded-lg border border-[#3b82f6]/30 text-[#3b82f6] shadow-sm">
-            <Shield size={20} />
-          </div>
+          <img src={logo} alt="ReconSentinel Logo" className="w-[36px] h-[36px] object-contain" />
           <span className="font-extrabold text-base tracking-widest text-[#f1f5f9]">
             <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
           </span>

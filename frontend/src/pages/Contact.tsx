@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import logo from '../assets/reconsentinel-logo.png';
 import { useNavigate } from 'react-router-dom';
-import { Shield, ArrowLeft, Send, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Contact() {
@@ -61,9 +62,7 @@ export default function Contact() {
       <nav className="sticky top-0 w-full z-50 bg-[#05080f]/80 backdrop-blur-md border-b border-[#21293a]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="bg-[#3b82f6]/10 p-1.5 rounded border border-[#3b82f6]/30 text-[#3b82f6]">
-              <Shield size={20} />
-            </div>
+            <img src={logo} alt="ReconSentinel Logo" className="w-[36px] h-[36px] object-contain" />
             <span className="font-extrabold text-base md:text-lg tracking-widest text-[#f1f5f9]">
               <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
             </span>

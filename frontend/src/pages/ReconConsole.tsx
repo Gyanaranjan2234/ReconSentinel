@@ -949,7 +949,7 @@ export default function ReconConsole() {
                 onChange={(e) => setPingDiscovery(e.target.checked)}
                 className="rounded w-5 h-5 bg-[#0d1117] border-[#21293a] text-[#3b82f6] focus:ring-0"
               />
-              <span>Ping Host Discovery (ICMP Echo request) before scanning</span>
+              <span>Ping Host Discovery</span>
             </label>
 
             <label className="flex items-center gap-3 text-base text-[#94a3b8] cursor-pointer">
@@ -959,7 +959,7 @@ export default function ReconConsole() {
                 onChange={(e) => setAggressiveMode(e.target.checked)}
                 className="rounded w-5 h-5 bg-[#0d1117] border-[#21293a] text-[#3b82f6] focus:ring-0"
               />
-              <span>Aggressive Version Detection (-sV -O OS fingerprinting)</span>
+              <span>Aggressive Version Detection</span>
             </label>
 
             <span className="block text-xs text-[#94a3b8] italic mt-2">Select one or more scan profiles to continue.</span>

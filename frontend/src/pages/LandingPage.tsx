@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import logo from '../assets/reconsentinel-logo.png';
 import { 
   Shield, 
   Terminal, 
@@ -129,9 +130,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full z-50 bg-[#05080f]/80 backdrop-blur-md border-b border-[#21293a]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="bg-[#3b82f6]/10 p-1.5 rounded border border-[#3b82f6]/30 text-[#3b82f6]">
-              <Shield size={20} />
-            </div>
+            <img src={logo} alt="ReconSentinel Logo" className="w-[36px] h-[36px] object-contain" />
             <span className="font-extrabold text-base md:text-lg tracking-widest text-[#f1f5f9]">
               <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
             </span>
@@ -141,7 +140,7 @@ export default function LandingPage() {
             <a href="#workflow" className="hover:text-white transition-colors">Workflow</a>
             <a href="#deep-dive" className="hover:text-white transition-colors">Deep Dive</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-            <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
+            <a href="https://github.com/Gyanaranjan2234/ReconSentinel" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
           </div>
           <button 
             onClick={() => navigate('/recon-console')}
@@ -655,7 +654,7 @@ export default function LandingPage() {
                   {/* PDF Header */}
                   <div className="h-16 bg-[#1e293b] flex items-center px-6">
                     <div className="flex items-center gap-2">
-                      <Shield size={16} className="text-[#3b82f6]" />
+                      <img src={logo} alt="ReconSentinel Logo" className="w-[24px] h-[24px] object-contain" />
                       <span className="font-extrabold text-[10px] tracking-widest text-[#f1f5f9]">RECONSENTINEL</span>
                     </div>
                   </div>
@@ -746,8 +745,8 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="relative z-10 py-24 bg-gradient-to-b from-[#0a0f1a] to-[#05080f] border-t border-[#21293a]">
         <div className="max-w-5xl mx-auto px-4 md:px-8 text-center">
-          <div className="inline-block p-4 rounded-full bg-[#3b82f6]/10 border border-[#3b82f6]/30 mb-8">
-            <Shield size={48} className="text-[#3b82f6]" />
+          <div className="inline-block mb-8">
+            <img src={logo} alt="ReconSentinel Logo" className="w-[72px] h-[72px] object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
           </div>
           <h2 className="text-4xl md:text-5xl font-black text-white mb-6">Ready to Secure Your Network?</h2>
           <p className="text-lg md:text-xl text-[#94a3b8] mb-10 max-w-2xl mx-auto">
@@ -835,9 +834,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-12">
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <div className="bg-[#3b82f6]/10 p-1.5 rounded border border-[#3b82f6]/30 text-[#3b82f6]">
-                  <Shield size={18} />
-                </div>
+                <img src={logo} alt="ReconSentinel Logo" className="w-[32px] h-[32px] object-contain" />
                 <span className="font-extrabold text-sm tracking-widest text-[#f1f5f9]">
                   <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
                 </span>
@@ -860,7 +857,7 @@ export default function LandingPage() {
             <div>
               <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-6">Community</h4>
               <ul className="space-y-3 text-sm text-[#94a3b8]">
-                <li><a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-[#3b82f6] transition-colors">GitHub Repository</a></li>
+                <li><a href="https://github.com/Gyanaranjan2234/ReconSentinel" target="_blank" rel="noreferrer" className="hover:text-[#3b82f6] transition-colors">GitHub Repository</a></li>
                 <li><a href="#" className="hover:text-[#3b82f6] transition-colors">Discord Community</a></li>
                 <li><a href="#" className="hover:text-[#3b82f6] transition-colors">LinkedIn</a></li>
                 <li><a href="#" className="hover:text-[#3b82f6] transition-colors">Security Blog</a></li>

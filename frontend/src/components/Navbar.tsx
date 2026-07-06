@@ -1,4 +1,4 @@
-import { Shield } from 'lucide-react';
+import logo from '../assets/reconsentinel-logo.png';
 import { Link } from 'react-router-dom';
 
 export default function Navbar() {
@@ -8,9 +8,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-3">
             <Link to="/" className="flex items-center space-x-2.5">
-              <div className="bg-accent/15 p-2 rounded-lg border border-accent/30 text-accent">
-                <Shield size={22} />
-              </div>
+              <img src={logo} alt="ReconSentinel Logo" className="w-[36px] h-[36px] object-contain" />
               <span className="font-extrabold text-xl tracking-wider text-white">
                 <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
               </span>

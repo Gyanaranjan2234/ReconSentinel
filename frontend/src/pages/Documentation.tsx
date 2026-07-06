@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import logo from '../assets/reconsentinel-logo.png';
 import { 
   Shield, 
   Terminal, 
@@ -83,9 +84,7 @@ export default function Documentation() {
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="bg-[#3b82f6]/10 p-1.5 rounded border border-[#3b82f6]/30 text-[#3b82f6]">
-              <Shield size={20} />
-            </div>
+            <img src={logo} alt="ReconSentinel Logo" className="w-[36px] h-[36px] object-contain" />
             <span className="font-extrabold tracking-widest text-[#f1f5f9]">
               <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
               <span className="ml-2 text-xs text-[#94a3b8] font-mono border-l border-[#334155] pl-2 hidden sm:inline">DOCS</span>
@@ -572,7 +571,7 @@ export default function Documentation() {
       <footer className="border-t border-[#21293a] bg-[#0a0f1a] py-8 z-50 relative">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <Shield size={16} className="text-[#3b82f6]" />
+            <img src={logo} alt="ReconSentinel Logo" className="w-[16px] h-[16px] object-contain" />
             <span className="font-extrabold text-xs tracking-widest text-[#f1f5f9]">
               <span className="text-[#3b82f6]">RECON</span><span className="text-[#22c55e]">SENTINEL</span>
             </span>
